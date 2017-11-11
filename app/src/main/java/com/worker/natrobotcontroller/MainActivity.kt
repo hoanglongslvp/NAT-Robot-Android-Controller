@@ -27,13 +27,13 @@ class MainActivity : AppCompatActivity() {
     private val mOnNavigationItemSelectedListener = BottomNavigationView.OnNavigationItemSelectedListener { item ->
         title = item.title
         when (item.itemId) {
-            R.id.navigation_home -> {
+            R.id.navigation_connect -> {
                 return@OnNavigationItemSelectedListener true
             }
-            R.id.navigation_dashboard -> {
+            R.id.navigation_camera -> {
                 return@OnNavigationItemSelectedListener true
             }
-            R.id.navigation_notifications -> {
+            R.id.navigation_control -> {
                 return@OnNavigationItemSelectedListener true
             }
         }
@@ -43,39 +43,38 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); //don't let the screen turn off
         setContentView(R.layout.activity_main)
         askForPermission()
+    }
+
+    val openCVInitCallback: LoaderCallbackInterface = object : LoaderCallbackInterface {
+        override fun onManagerConnected(status: Int) {
+            when (status) {
+                LoaderCallbackInterface.SUCCESS -> {
+                    Log.i("INIT", "OpenCV loaded successfully")
+                    initedOpenCV = true
+                    switchCamera()
+                }
+                else -> {
+                    Log.w("INIT", "OpenCV loaded fails")
+                }
+            }
+        }
+
+        override fun onPackageInstall(operation: Int, callback: InstallCallbackInterface?) {
+        }
 
     }
 
     override fun onResume() {
         super.onResume()
-        val callback: LoaderCallbackInterface = object : LoaderCallbackInterface {
-            override fun onManagerConnected(status: Int) {
-                when (status) {
-                    LoaderCallbackInterface.SUCCESS -> {
-                        Log.i("Opencv", "OpenCV loaded successfully")
-                        initedOpenCV = true
-                        switchCamera()
-                    }
-                    else -> {
-                        Log.w("Opencv", "OpenCV loaded fails")
-                    }
-                }
-            }
-
-            override fun onPackageInstall(operation: Int, callback: InstallCallbackInterface?) {
-            }
-
-        }
         if (!OpenCVLoader.initDebug()) {
             Log.d("INIT", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, callback);
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, openCVInitCallback);
         } else {
             Log.d("INIT", "OpenCV library found inside package. Using it!");
-            callback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+            openCVInitCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
     }
 
@@ -95,7 +94,7 @@ class MainActivity : AppCompatActivity() {
                 result?.release()
                 val rgba = frame.rgba()
                 result = rgba
-                val mask = getBlueMask(rgba)
+                val mask = getColorMask(rgba)
                 val contours = getContour(mask)
                 val contour_index = getBiggestContour(contours)
 
@@ -106,7 +105,7 @@ class MainActivity : AppCompatActivity() {
                     val matOfPoint2f = MatOfPoint2f()
                     contour.convertTo(matOfPoint2f, CvType.CV_32F)
                     val rect = Imgproc.minAreaRect(matOfPoint2f)
-                    draw(rect, rgba)
+                    drawRotatedRect(rect, rgba)
 
                     var angle = rect.angle
                     val rect_size = rect.size
@@ -131,7 +130,8 @@ class MainActivity : AppCompatActivity() {
                     }
                     Core.merge(tmp, cropped)
                     cropped.copyTo(Mat(rgba, Rect(20, 20, cropped.width(), cropped.height())))
-                    channels.forEach { it.release() }
+
+                    channels.forEach { it.release() } //must release all elements in the array to prevent memory leak
                     tmp.forEach { it.release() }
                     matOfPoint2f.release()
                     rotated.release()
@@ -145,6 +145,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    //get the biggest contour from a set of contours
     private fun getBiggestContour(contours: MutableList<MatOfPoint>): Int {
         var biggest = 0.0
         var index = -1
@@ -158,6 +159,7 @@ class MainActivity : AppCompatActivity() {
         return index
     }
 
+    //get contours from a binary image
     private fun getContour(mask: Mat): MutableList<MatOfPoint> {
         val contours = ArrayList<MatOfPoint>()
         val hierarchy = Mat()
@@ -166,18 +168,19 @@ class MainActivity : AppCompatActivity() {
         return contours
     }
 
-    private fun getBlueMask(rgba: Mat): Mat {
+    //generate a binary image from a full color image
+    private fun getColorMask(rgba: Mat): Mat {
         val hsv = Mat()
-        Imgproc.cvtColor(rgba, hsv, Imgproc.COLOR_RGB2HSV, 3)
+        Imgproc.cvtColor(rgba, hsv, Imgproc.COLOR_RGB2HSV, 3) //convert rgb image to hsv image
         val mask = Mat()
-        val lower_color = Scalar(160.0 / 2, 100.0, 70.0)
-        val upper_color = Scalar(277.0 / 2, 255.0, 255.0)
-        Core.inRange(hsv, lower_color, upper_color, mask)
-        hsv.release()
+        val lower_color = Scalar(160.0 / 2, 100.0, 70.0) //the lower color limit
+        val upper_color = Scalar(277.0 / 2, 255.0, 255.0) //the upper color limit
+        Core.inRange(hsv, lower_color, upper_color, mask) //get all a pixel that stays between two limits
+        hsv.release() //don't forget to release any Mat (Image)
         return mask
     }
 
-    private fun draw(rRect: RotatedRect, mat: Mat) {
+    private fun drawRotatedRect(rRect: RotatedRect, mat: Mat) {
         val vertices = arrayOfNulls<Point>(4)
         rRect.points(vertices)
         for (j in 0..3) {
@@ -191,7 +194,7 @@ class MainActivity : AppCompatActivity() {
                 setupUI()
             }
         }
-        ).ask(134)
+        ).ask(134) //134 is just a random number
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -204,7 +207,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun switchCamera() {
-        if (initedOpenCV)
+        if (initedOpenCV) //must be sure that openCV has been initialized before enable Camera
             if (enableCamera)
                 cameraView.enableView()
             else
