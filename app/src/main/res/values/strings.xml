@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">NAT Robot Controller</string>
+    <string name="title_home">Home</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+    <string name="connect_to_rc">Connect to RC</string>
+    <string name="manually_control">Manually control</string>
+    <string name="camera_sight">Camera sight</string>
+    <string name="switch_camera">Switch camera</string>
+</resources>

@@ -1,0 +1,79 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+MAX_MOTOR_SPEED	../moveToTheSign.py	/^MAX_MOTOR_SPEED = 230 # from 127 to 255$/;"	kind:variable	line:19
+PiCamera	../detectTrafficSign.py	/^from picamera import PiCamera$/;"	kind:namespace	line:4
+PiCamera	../moveToTheSign.py	/^from picamera import PiCamera$/;"	kind:namespace	line:7
+PiRGBArray	../detectTrafficSign.py	/^from picamera.array import PiRGBArray$/;"	kind:namespace	line:3
+PiRGBArray	../moveToTheSign.py	/^from picamera.array import PiRGBArray$/;"	kind:namespace	line:6
+SIGNS_LOOKUP	../signRecognition.py	/^SIGNS_LOOKUP = {$/;"	kind:variable	line:9
+argparse	../moveToTheSign.py	/^import argparse$/;"	kind:namespace	line:4
+calculateAnglesToMove	../moveToTheSign.py	/^def calculateAnglesToMove(coordinates):$/;"	kind:function	line:195
+camera	../detectTrafficSign.py	/^camera = PiCamera()$/;"	kind:variable	line:13
+camera	../detectWithWebCamera.py	/^camera = cv2.VideoCapture(0)$/;"	kind:variable	line:8
+camera	../moveToTheSign.py	/^camera = PiCamera()$/;"	kind:variable	line:28
+camera	../signRecognition.py	/^camera = cv2.VideoCapture(0)$/;"	kind:variable	line:16
+cameraResolution	../detectTrafficSign.py	/^cameraResolution = (320, 240)$/;"	kind:variable	line:10
+cameraResolution	../moveToTheSign.py	/^cameraResolution = (640, 480)$/;"	kind:variable	line:27
+cap	../mycam.py	/^cap=cv2.VideoCapture("\/home\/hataketsu\/Videos\/SUPER-HERO-BOWL! - TOON SANDWICH.mp4")$/;"	kind:variable	line:2
+contours	../signRecognition.py	/^from imutils import contours$/;"	kind:namespace	line:2
+currentPan	../moveToTheSign.py	/^currentPan = 95$/;"	kind:variable	line:15
+currentTilt	../moveToTheSign.py	/^currentTilt = 45$/;"	kind:variable	line:16
+cv2	../detectTrafficSign.py	/^import cv2$/;"	kind:namespace	line:1
+cv2	../detectWithWebCamera.py	/^import cv2$/;"	kind:namespace	line:1
+cv2	../moveToTheSign.py	/^import cv2$/;"	kind:namespace	line:2
+cv2	../mycam.py	/^import cv2$/;"	kind:namespace	line:1
+cv2	../signRecognition.py	/^import cv2$/;"	kind:namespace	line:4
+defineTrafficSign	../signRecognition.py	/^def defineTrafficSign(image):$/;"	kind:function	line:18
+detectTrafficSign.py	../detectTrafficSign.py	1;"	kind:file	line:1
+detectWithWebCamera.py	../detectWithWebCamera.py	1;"	kind:file	line:1
+division	../moveToTheSign.py	/^from __future__ import division$/;"	kind:namespace	line:1
+e_int	../moveToTheSign.py	/^e_int = 0$/;"	kind:variable	line:21
+e_prev	../moveToTheSign.py	/^e_prev = 0$/;"	kind:variable	line:20
+findHSVRange	../moveToTheSign.py	/^def findHSVRange():$/;"	kind:function	line:84
+findTrafficSign	../detectTrafficSign.py	/^def findTrafficSign():$/;"	kind:function	line:23
+findTrafficSign	../detectWithWebCamera.py	/^def findTrafficSign():$/;"	kind:function	line:10
+findTrafficSign	../moveToTheSign.py	/^def findTrafficSign():$/;"	kind:function	line:471
+followTheColoreObject	../moveToTheSign.py	/^def followTheColoreObject():$/;"	kind:function	line:299
+followTheLine	../moveToTheSign.py	/^def followTheLine():$/;"	kind:function	line:383
+four_point_transform	../detectTrafficSign.py	/^from imutils.perspective import four_point_transform$/;"	kind:namespace	line:6
+four_point_transform	../detectWithWebCamera.py	/^from imutils.perspective import four_point_transform$/;"	kind:namespace	line:4
+four_point_transform	../moveToTheSign.py	/^from imutils.perspective import four_point_transform$/;"	kind:namespace	line:9
+four_point_transform	../signRecognition.py	/^from imutils.perspective import four_point_transform$/;"	kind:namespace	line:1
+fourcc	../moveToTheSign.py	/^fourcc = cv2.VideoWriter_fourcc(*'XVID')$/;"	kind:variable	line:38
+get_arguments	../moveToTheSign.py	/^def get_arguments():$/;"	kind:function	line:53
+halfFrameHeight	../moveToTheSign.py	/^halfFrameHeight = cameraResolution[1]\/2$/;"	kind:variable	line:43
+halfFrameWidth	../moveToTheSign.py	/^halfFrameWidth = cameraResolution[0]\/2$/;"	kind:variable	line:42
+identifyTrafficSign	../detectTrafficSign.py	/^def identifyTrafficSign(image):$/;"	kind:function	line:118
+identifyTrafficSign	../detectWithWebCamera.py	/^def identifyTrafficSign(image):$/;"	kind:function	line:106
+identifyTrafficSign	../moveToTheSign.py	/^def identifyTrafficSign(image):$/;"	kind:function	line:241
+imutils	../detectWithWebCamera.py	/^import imutils$/;"	kind:namespace	line:6
+imutils	../signRecognition.py	/^import imutils$/;"	kind:namespace	line:3
+main	../detectTrafficSign.py	/^def main():$/;"	kind:function	line:172
+main	../detectWithWebCamera.py	/^def main():$/;"	kind:function	line:160
+main	../moveToTheSign.py	/^def main():$/;"	kind:function	line:640
+mapValueToRange	../moveToTheSign.py	/^def mapValueToRange(value, fromMin, fromMax, toMin, toMax):$/;"	kind:function	line:67
+moveMotors	../moveToTheSign.py	/^def moveMotors(left, right):$/;"	kind:function	line:177
+movePanTilt	../moveToTheSign.py	/^def movePanTilt(servo, angle):$/;"	kind:function	line:153
+moveToTheSign.py	../moveToTheSign.py	1;"	kind:file	line:1
+mycam.py	../mycam.py	1;"	kind:file	line:1
+np	../detectTrafficSign.py	/^import numpy as np$/;"	kind:namespace	line:2
+np	../detectWithWebCamera.py	/^import numpy as np$/;"	kind:namespace	line:2
+np	../moveToTheSign.py	/^import numpy as np$/;"	kind:namespace	line:3
+np	../signRecognition.py	/^import numpy as np$/;"	kind:namespace	line:5
+out	../moveToTheSign.py	/^out = cv2.VideoWriter('output.avi',fourcc, 6.0, (640,480))$/;"	kind:variable	line:39
+pidController	../moveToTheSign.py	/^def pidController(xCentroidCoordinate, xCenterOfTheImage, Kp, Kd, Ki):$/;"	kind:function	line:134
+rawCapture	../detectTrafficSign.py	/^rawCapture = PiRGBArray(camera, size=cameraResolution)$/;"	kind:variable	line:18
+rawCapture	../moveToTheSign.py	/^rawCapture = PiRGBArray(camera, size=cameraResolution)$/;"	kind:variable	line:33
+serial	../moveToTheSign.py	/^import serial$/;"	kind:namespace	line:11
+serialArduino	../moveToTheSign.py	/^serialArduino = serial.Serial(usbport, 9600, timeout=1)$/;"	kind:variable	line:47
+signRecognition.py	../signRecognition.py	1;"	kind:file	line:1
+struct	../moveToTheSign.py	/^import struct$/;"	kind:namespace	line:12
+time	../detectTrafficSign.py	/^import time$/;"	kind:namespace	line:5
+time	../detectWithWebCamera.py	/^import time$/;"	kind:namespace	line:3
+time	../moveToTheSign.py	/^import time$/;"	kind:namespace	line:8
+usbport	../moveToTheSign.py	/^usbport = '\/dev\/ttyUSB0'$/;"	kind:variable	line:46
+xor	../moveToTheSign.py	/^from operator import xor$/;"	kind:namespace	line:5
