@@ -98,41 +98,46 @@ class MainActivity : AppCompatActivity() {
                 val contours = getContour(mask)
                 val contour_index = getBiggestContour(contours)
 
-                if (contour_index != -1) {
+                if (contour_index != -1) { //we got a sign
+                    val randomColor = Scalar(Math.random() * 255, Math.random() * 255, Math.random() * 255)
                     Imgproc.drawContours(rgba, contours, contour_index,
-                            Scalar(Math.random() * 255, Math.random() * 255, Math.random() * 255))
-                    val contour = contours[contour_index]
+                            randomColor)
+                    val contour = contours[contour_index] //the biggest contour
                     val matOfPoint2f = MatOfPoint2f()
                     contour.convertTo(matOfPoint2f, CvType.CV_32F)
                     val rect = Imgproc.minAreaRect(matOfPoint2f)
+                    contour.release()
+                    matOfPoint2f.release()
                     drawRotatedRect(rect, rgba)
 
-                    var angle = rect.angle
-                    val rect_size = rect.size
-                    if (angle < -45.0) {
-                        angle += 90.0
-                        val tmp = rect_size.width
-                        rect_size.width = rect_size.height
-                        rect_size.height = tmp
+                    if (rect.angle < -45.0) { //fix the rotated angle
+                        rect.angle += 90.0
+
+                        val tmp = rect.size.width //swap width and height
+                        rect.size.width = rect.size.height
+                        rect.size.height = tmp
                     }
-                    val rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, angle, 1.0)
+
+                    //get rotation matrix from the rotated rectangle
+                    val rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, rect.angle, 1.0)
                     val rotated = Mat()
                     Imgproc.warpAffine(rgba, rotated, rotationMatrix2D, rgba.size(), INTER_CUBIC)
                     val cropped = Mat()
 
-                    val channels = mutableListOf<Mat>()
-                    val tmp = mutableListOf<Mat>()
-                    val t = Mat()
-                    Core.split(rotated, channels)
-                    for (channel in channels) {
-                        getRectSubPix(channel, rect_size, rect.center, t)
-                        tmp.add(t.clone())
+                    val rotatedChannels = mutableListOf<Mat>()
+                    val croppedChannels = mutableListOf<Mat>()
+                    val tempChannel = Mat()
+                    Core.split(rotated, rotatedChannels)
+                    for (channel in rotatedChannels) {
+                        getRectSubPix(channel, rect.size, rect.center, tempChannel)
+                        croppedChannels.add(tempChannel.clone())
                     }
-                    Core.merge(tmp, cropped)
+                    Core.merge(croppedChannels, cropped)
                     cropped.copyTo(Mat(rgba, Rect(20, 20, cropped.width(), cropped.height())))
 
-                    channels.forEach { it.release() } //must release all elements in the array to prevent memory leak
-                    tmp.forEach { it.release() }
+                    rotatedChannels.forEach { it.release() } //must release all elements in the array to prevent memory leak
+                    croppedChannels.forEach { it.release() }
+                    tempChannel.release()
                     matOfPoint2f.release()
                     rotated.release()
                     cropped.release()
@@ -207,7 +212,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun switchCamera() {
-        if (initedOpenCV) //must be sure that openCV has been initialized before enable Camera
+        if (initedOpenCV) //must be sure that openCV has been initialized before enabling Camera
             if (enableCamera)
                 cameraView.enableView()
             else
