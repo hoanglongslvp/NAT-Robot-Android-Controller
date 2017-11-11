@@ -1,12 +1,15 @@
 package com.worker.natrobotcontroller
 
 import android.Manifest
+import android.content.Intent
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.support.design.widget.BottomNavigationView
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.SwitchCompat
 import android.util.Log
 import android.view.Menu
+import android.view.MenuItem
 import android.view.WindowManager
 import com.github.kayvannj.permission_utils.Func
 import com.github.kayvannj.permission_utils.PermissionUtil
@@ -16,6 +19,7 @@ import org.opencv.android.InstallCallbackInterface
 import org.opencv.android.LoaderCallbackInterface
 import org.opencv.android.OpenCVLoader
 import org.opencv.core.*
+import org.opencv.core.Core.FONT_HERSHEY_SIMPLEX
 import org.opencv.imgproc.Imgproc
 import org.opencv.imgproc.Imgproc.*
 
@@ -23,7 +27,10 @@ import org.opencv.imgproc.Imgproc.*
 class MainActivity : AppCompatActivity() {
     var enableCamera = true
     var initedOpenCV = false
+    var firstRun = true
+    val preferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
 
+    val signs = mutableListOf<TrafficSignImage>()
     private val mOnNavigationItemSelectedListener = BottomNavigationView.OnNavigationItemSelectedListener { item ->
         title = item.title
         when (item.itemId) {
@@ -42,10 +49,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+//        startActivity(Intent(this, SettingActivity::class.java))
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); //don't let the screen turn off
         setContentView(R.layout.activity_main)
         askForPermission()
+    }
+
+    private fun preloadImage() {
+        signs.add(TrafficSignImage("Turn right", this, R.drawable.turnright))
+        signs.add(TrafficSignImage("Turn left", this, R.drawable.turnleft))
+        signs.add(TrafficSignImage("Turn back", this, R.drawable.turnback))
+        signs.add(TrafficSignImage("Move straight", this, R.drawable.movestraight))
     }
 
     val openCVInitCallback: LoaderCallbackInterface = object : LoaderCallbackInterface {
@@ -54,11 +69,11 @@ class MainActivity : AppCompatActivity() {
                 LoaderCallbackInterface.SUCCESS -> {
                     Log.i("INIT", "OpenCV loaded successfully")
                     initedOpenCV = true
+                    preloadImage()
                     switchCamera()
                 }
-                else -> {
-                    Log.w("INIT", "OpenCV loaded fails")
-                }
+                else -> Log.w("INIT", "OpenCV loading failed")
+
             }
         }
 
@@ -78,19 +93,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     private fun setupUI() {
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener)
         cameraView.setCvCameraViewListener(object : CameraBridgeViewBase.CvCameraViewListener2 {
             var result: Mat? = null
-            override fun onCameraViewStarted(width: Int, height: Int) {
+            override fun onCameraViewStarted(width: Int, height: Int) {}
 
-            }
-
-            override fun onCameraViewStopped() {
-            }
+            override fun onCameraViewStopped() {}
 
             override fun onCameraFrame(frame: CameraBridgeViewBase.CvCameraViewFrame): Mat {
-//                return frame.rgba()
                 result?.release()
                 val rgba = frame.rgba()
                 result = rgba
@@ -99,55 +111,127 @@ class MainActivity : AppCompatActivity() {
                 val contour_index = getBiggestContour(contours)
 
                 if (contour_index != -1) { //we got a sign
+                    val contour = contours[contour_index] //the biggest contour
                     val randomColor = Scalar(Math.random() * 255, Math.random() * 255, Math.random() * 255)
                     Imgproc.drawContours(rgba, contours, contour_index,
                             randomColor)
-                    val contour = contours[contour_index] //the biggest contour
-                    val matOfPoint2f = MatOfPoint2f()
-                    contour.convertTo(matOfPoint2f, CvType.CV_32F)
-                    val rect = Imgproc.minAreaRect(matOfPoint2f)
-                    contour.release()
-                    matOfPoint2f.release()
-                    drawRotatedRect(rect, rgba)
+                    val rect = getMinAreaRect(contour)
+                    if (rect.size.width > 10 && rect.size.height > 10) {
+                        drawRotatedRect(rect, rgba)
+                        fixRotationRect(rect)
 
-                    if (rect.angle < -45.0) { //fix the rotated angle
-                        rect.angle += 90.0
+                        //get rotation matrix from the rotated rectangle
+                        val rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, rect.angle, 1.0)
 
-                        val tmp = rect.size.width //swap width and height
-                        rect.size.width = rect.size.height
-                        rect.size.height = tmp
+//                    drawThumbnail(rgba, rotationMatrix2D, rect)
+                        drawMaskThumbnail(rgba, rotationMatrix2D, rect, mask)
+                        rotationMatrix2D.release()
                     }
-
-                    //get rotation matrix from the rotated rectangle
-                    val rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, rect.angle, 1.0)
-                    val rotated = Mat()
-                    Imgproc.warpAffine(rgba, rotated, rotationMatrix2D, rgba.size(), INTER_CUBIC)
-                    val cropped = Mat()
-
-                    val rotatedChannels = mutableListOf<Mat>()
-                    val croppedChannels = mutableListOf<Mat>()
-                    val tempChannel = Mat()
-                    Core.split(rotated, rotatedChannels)
-                    for (channel in rotatedChannels) {
-                        getRectSubPix(channel, rect.size, rect.center, tempChannel)
-                        croppedChannels.add(tempChannel.clone())
-                    }
-                    Core.merge(croppedChannels, cropped)
-                    cropped.copyTo(Mat(rgba, Rect(20, 20, cropped.width(), cropped.height())))
-
-                    rotatedChannels.forEach { it.release() } //must release all elements in the array to prevent memory leak
-                    croppedChannels.forEach { it.release() }
-                    tempChannel.release()
-                    matOfPoint2f.release()
-                    rotated.release()
-                    cropped.release()
                     return rgba
                 }
+                contours.forEach { it.release() }
                 mask.release()
+                System.gc()
+                System.runFinalization()
                 return result as Mat
             }
 
         })
+    }
+
+    //fix the rotated angle
+    private fun fixRotationRect(rect: RotatedRect) {
+        if (rect.angle < -45.0) {
+            rect.angle += 90.0
+            val tmp = rect.size.width //swap width and height
+            rect.size.width = rect.size.height
+            rect.size.height = tmp
+        }
+    }
+
+    //show a captured thumb of traffic sign
+    private fun drawThumbnail(rgba: Mat, rotationMatrix2D: Mat?, rect: RotatedRect) {
+        val rotatedMat = Mat()
+        warpAffine(rgba, rotatedMat, rotationMatrix2D, rgba.size(), INTER_CUBIC)
+        val cropped = Mat()
+
+        val rotatedChannels = mutableListOf<Mat>()
+        val croppedChannels = mutableListOf<Mat>()
+        val tempChannel = Mat()
+        Core.split(rotatedMat, rotatedChannels)
+        for (channel in rotatedChannels) {
+            getRectSubPix(channel, rect.size, rect.center, tempChannel)
+            croppedChannels.add(tempChannel.clone())
+        }
+        Core.merge(croppedChannels, cropped)
+        cropped.copyTo(Mat(rgba, Rect(20, 20, cropped.width(), cropped.height())))
+
+        rotatedChannels.forEach { it.release() } //must release all elements in the array to prevent memory leak
+        croppedChannels.forEach { it.release() }
+        tempChannel.release()
+        rotatedMat.release()
+        cropped.release()
+    }
+
+    private fun drawMaskThumbnail(rgba: Mat, rotationMatrix2D: Mat?, rect: RotatedRect, mask: Mat) {
+        val rotatedMat = Mat()
+        warpAffine(mask, rotatedMat, rotationMatrix2D, rgba.size(), INTER_CUBIC)
+        var cropped = Mat()
+        getRectSubPix(rotatedMat, rect.size, rect.center, cropped)
+        Core.bitwise_not(cropped, cropped)
+        var rgbaCropped = Mat()
+        cvtColor(cropped, rgbaCropped, COLOR_GRAY2RGBA)
+        rgbaCropped = resizeMat(rgbaCropped, 50, 50)
+        cropped = resizeMat(cropped, 50, 50)
+        rgbaCropped.copyTo(Mat(rgba, Rect(20, 20, rgbaCropped.width(), rgbaCropped.height())))
+        var sign: TrafficSignImage? = null
+        var similary = 100000000.0
+        for (s in signs) {
+            val simi = getSimilarity(s.img, cropped)
+            if (simi < similary) {
+                sign = s
+                similary = simi
+            }
+            Log.d("Similary", s.msg + " : " + simi)
+        }
+
+        Log.d("Similary", "Best " + (sign?.msg))
+        if (sign != null) {
+            if (similary < 1.5)
+                putText(rgba, "Match : " + sign.msg + " : " + similary, Point(20.0, 100.0), FONT_HERSHEY_SIMPLEX, 0.65, Scalar(0.0, 255.0, 0.0), 2)
+        }
+        rgbaCropped.release()
+        rotatedMat.release()
+        cropped.release()
+    }
+
+    fun getSimilarity(A: Mat, B: Mat): Double {
+        if (A.rows() > 0 && A.rows() == B.rows() && A.cols() > 0 && A.cols() == B.cols()) {
+            // Calculate the L2 relative error between images.
+            val errorL2 = Core.norm(A, B, Core.NORM_L2);
+            // Convert to a reasonable scale, since L2 error is summed across all pixels of the image.
+            val similarity = errorL2 / (A.rows() * A.cols());
+            return similarity;
+        } else {
+            //Images have a different size
+            return 100000000.0;  // Return a bad value
+        }
+    }
+
+    private fun resizeMat(mat: Mat, w: Int, h: Int): Mat {
+        val result = Mat()
+        resize(mat, result, Size(w.toDouble(), h.toDouble()))
+        mat.release()
+        return result
+    }
+
+
+    private fun getMinAreaRect(contour: MatOfPoint): RotatedRect {
+        val matOfPoint2f = MatOfPoint2f()
+        contour.convertTo(matOfPoint2f, CvType.CV_32F)
+        val result = Imgproc.minAreaRect(matOfPoint2f)
+        matOfPoint2f.release()
+        return result
     }
 
     //get the biggest contour from a set of contours
@@ -204,11 +288,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.switch_menu, menu)
-        (menu.findItem(R.id.camera_switcher).actionView as SwitchCompat).setOnCheckedChangeListener { button, checked ->
+        val switch = menu.findItem(R.id.camera_switcher).actionView as SwitchCompat
+//        switch.isChecked = preferences.getBoolean(getString(R.string.setting_camera_on), false)
+        switch.setOnCheckedChangeListener { button, checked ->
             enableCamera = checked
             switchCamera()
         }
         return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.setting_action -> startActivity(Intent(this, SettingActivity::class.java))
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     private fun switchCamera() {

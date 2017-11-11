@@ -35,6 +35,6 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     compile project(path: ':openCVLibrary331')
-
+    compile 'com.1gravity:android-colorpicker:2.0.3'
     compile 'com.github.kayvannj:PermissionUtils:1.0.9'
 }

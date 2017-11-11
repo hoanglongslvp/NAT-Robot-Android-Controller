@@ -7,4 +7,7 @@
     <string name="manually_control">Manually control</string>
     <string name="camera_sight">Camera sight</string>
     <string name="switch_camera">Switch camera</string>
+    <string name="setting">Setting</string>
+    <string name="setting_camera_on">camera_auto_on</string>
+    <string name="camera_auto_turn_on">Camera auto turn on</string>
 </resources>
