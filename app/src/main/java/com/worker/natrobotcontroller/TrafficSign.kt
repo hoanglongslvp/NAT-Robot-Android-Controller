@@ -1,5 +1,6 @@
 package com.worker.natrobotcontroller
 
+import android.app.Activity
 import android.graphics.BitmapFactory
 import org.opencv.android.Utils
 import org.opencv.core.Mat
@@ -9,7 +10,7 @@ import org.opencv.imgproc.Imgproc.COLOR_RGBA2GRAY
 /**
  * Created by hataketsu on 11/11/17.
  */
-class TrafficSignImage(_msg: String, mainActivity: MainActivity, res_id: Int) {
+class TrafficSign(_msg: String, mainActivity: Activity, res_id: Int) {
     val img = Mat()
     var msg = ""
 

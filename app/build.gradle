@@ -36,5 +36,8 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     compile project(path: ':openCVLibrary331')
     compile 'com.1gravity:android-colorpicker:2.0.3'
+    compile 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:0.7.2'
     compile 'com.github.kayvannj:PermissionUtils:1.0.9'
+    compile "org.jetbrains.anko:anko-commons:0.10.1"
+    compile "org.jetbrains.anko:anko-design:0.10.1"
 }
