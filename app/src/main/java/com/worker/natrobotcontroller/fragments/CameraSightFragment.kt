@@ -65,7 +65,7 @@ class CameraSightFragment : Fragment() {
 
                     contours.forEach { contour ->
                         val rect = getMinAreaRect(contour)
-                        if (rect.size.width > 20 && rect.size.height > 20) {
+                        if (rect.size.width > 20 && rect.size.height > 20 ) {
                             if (drawRect)
                                 drawRotatedRect(rect, rgba, detectColor)
 
@@ -82,7 +82,7 @@ class CameraSightFragment : Fragment() {
                                 else if (best.error < bestResult!!.error)
                                     bestResult = best
                                 if (drawError)
-                                    Imgproc.putText(rgba, "Match : " + best.sign.msg + " : " + best.error, Point(20.0, 100.0), Core.FONT_HERSHEY_SIMPLEX, 0.65, selectColor, 2)
+                                    Imgproc.putText(rgba,  best.sign.msg + "\n" + best.error, bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, selectColor, 2)
                             }
                         }
                         contour.release()
@@ -183,10 +183,6 @@ class CameraSightFragment : Fragment() {
         isStreaming = preferences.getBoolean("is_streaming", false)
         detectThreshold = preferences.getString("detect_threshold", "1.5").toDouble()
         cameraSize = preferences.getString("camera_size", "Fullsize")
-
-//        val _detectColor = preferences.getLong("detect_color", resources.getColor(R.color.detect).toLong())
-//        val _selectColor = preferences.getLong("detect_color", resources.getColor(R.color.select).toLong())
-
     }
 
     //fix the rotated angle
@@ -197,62 +193,6 @@ class CameraSightFragment : Fragment() {
             rect.size.width = rect.size.height
             rect.size.height = tmp
         }
-    }
-
-    //show a captured thumb of traffic sign
-    private fun drawColorThumbnail(rgba: Mat, rotationMatrix2D: Mat?, rect: RotatedRect) {
-        val rotatedMat = Mat()
-        Imgproc.warpAffine(rgba, rotatedMat, rotationMatrix2D, rgba.size(), Imgproc.INTER_CUBIC)
-        val cropped = Mat()
-
-        val rotatedChannels = mutableListOf<Mat>()
-        val croppedChannels = mutableListOf<Mat>()
-        val tempChannel = Mat()
-        Core.split(rotatedMat, rotatedChannels)
-        for (channel in rotatedChannels) {
-            Imgproc.getRectSubPix(channel, rect.size, rect.center, tempChannel)
-            croppedChannels.add(tempChannel.clone())
-        }
-        Core.merge(croppedChannels, cropped)
-        cropped.copyTo(Mat(rgba, Rect(20, 20, cropped.width(), cropped.height())))
-
-        rotatedChannels.forEach { it.release() } //must release all elements in the array to prevent memory leak
-        croppedChannels.forEach { it.release() }
-        tempChannel.release()
-        rotatedMat.release()
-        cropped.release()
-    }
-
-    private fun drawMaskThumbnail(rgba: Mat, rotationMatrix2D: Mat?, rect: RotatedRect, mask: Mat) {
-        val rotatedMat = Mat()
-        Imgproc.warpAffine(mask, rotatedMat, rotationMatrix2D, rgba.size(), Imgproc.INTER_CUBIC)
-        var cropped = Mat()
-        Imgproc.getRectSubPix(rotatedMat, rect.size, rect.center, cropped)
-        Core.bitwise_not(cropped, cropped)
-        var rgbaCropped = Mat()
-        Imgproc.cvtColor(cropped, rgbaCropped, Imgproc.COLOR_GRAY2RGBA)
-        rgbaCropped = resizeMat(rgbaCropped, 50, 50)
-        cropped = resizeMat(cropped, 50, 50)
-        rgbaCropped.copyTo(Mat(rgba, Rect(20, 20, rgbaCropped.width(), rgbaCropped.height())))
-        var sign: TrafficSign? = null
-        var similary = 100000000.0
-        for (s in signs) {
-            val err = getError(s.img, cropped)
-            if (err < similary) {
-                sign = s
-                similary = err
-            }
-            Log.d("Error", s.msg + " : " + err)
-        }
-
-        Log.d("Error", "Best " + (sign?.msg))
-        if (sign != null) {
-            if (similary < 1.5)
-                Imgproc.putText(rgba, "Match : " + sign.msg + " : " + similary, Point(20.0, 100.0), Core.FONT_HERSHEY_SIMPLEX, 0.65, Scalar(0.0, 255.0, 0.0), 2)
-        }
-        rgbaCropped.release()
-        rotatedMat.release()
-        cropped.release()
     }
 
     fun getError(A: Mat, B: Mat): Double {
@@ -282,20 +222,6 @@ class CameraSightFragment : Fragment() {
         val result = Imgproc.minAreaRect(matOfPoint2f)
         matOfPoint2f.release()
         return result
-    }
-
-    //get the biggest contour from a set of contours
-    private fun getBiggestContour(contours: MutableList<MatOfPoint>): Int {
-        var biggest = 0.0
-        var index = -1
-        for (i in 0..(contours.size - 1)) {
-            val area = Imgproc.contourArea(contours[i])
-            if (area > biggest) {
-                biggest = area
-                index = i
-            }
-        }
-        return index
     }
 
     //get contours from a binary image
