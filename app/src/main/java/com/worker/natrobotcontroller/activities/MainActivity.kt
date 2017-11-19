@@ -3,12 +3,14 @@ package com.worker.natrobotcontroller.activities
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.support.design.widget.BottomNavigationView
 import android.support.v4.app.Fragment
 import android.support.v4.app.FragmentPagerAdapter
 import android.support.v4.view.ViewPager
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import android.view.Menu
 import android.view.MenuItem
 import android.view.WindowManager
 import com.github.kayvannj.permission_utils.Func
@@ -104,10 +106,20 @@ class MainActivity : AppCompatActivity() {
                 .ask(134) //134 is just a random number
     }
 
+    override fun onResume() {
+        super.onResume()
+        val preferences = PreferenceManager.getDefaultSharedPreferences(this)
+    }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.setting_action -> startActivity(Intent(this, SettingActivity::class.java))
         }
         return super.onOptionsItemSelected(item)
     }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.switch_menu, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
 }

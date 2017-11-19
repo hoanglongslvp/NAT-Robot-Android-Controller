@@ -2,17 +2,22 @@ package com.worker.natrobotcontroller.activities
 
 import android.os.Bundle
 import android.os.PersistableBundle
-import android.preference.PreferenceActivity
 import android.preference.PreferenceFragment
 import com.worker.natrobotcontroller.R
 
 
-class SettingActivity : PreferenceActivity() {
+class SettingActivity : AppBarSetting() {
+
+    override fun isValidFragment(fragmentName: String?): Boolean {
+        return true
+    }
 
     override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
         super.onCreate(savedInstanceState, persistentState)
         getActionBar().setDisplayShowTitleEnabled(true);
-        title="NAT Setting"
+        title = "NAT Setting"
+//        fragmentManager.beginTransaction().replace(android.R.id.content,
+//                Prefs1Fragment()).commit()
     }
 
     override fun onBuildHeaders(target: MutableList<Header>?) {

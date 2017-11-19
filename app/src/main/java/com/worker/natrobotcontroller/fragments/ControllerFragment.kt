@@ -31,12 +31,9 @@ class ControllerFragment : Fragment() {
     }
 
     private fun sendCommand(connect: ConnectFragment?, command: Char) {
-//        val arr = CharArray(1)
-//        arr[0] = command
         if (connect?.socket == null) {
             connect?.log("Not connected")
         } else
-
             try {
                 connect.socket?.getOutputStream()?.write(command.toInt())
                 connect.log("Sent command $command")

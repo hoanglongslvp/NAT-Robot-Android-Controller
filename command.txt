@@ -1,0 +1,5 @@
+Tập lệnh send:
+	+ <l|r><speed>  ex:r200, l-250  //left, right pwm
+	+ <_><degree>	ex:r		//rotate to degree
+receive:
+	+ <d>				//done?

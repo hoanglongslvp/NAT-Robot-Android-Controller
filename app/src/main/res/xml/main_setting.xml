@@ -1,10 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <PreferenceCategory android:title="Camera">
-        <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="@string/setting_camera_on"
-            android:title="@string/camera_auto_turn_on" />
+    <PreferenceCategory android:title="Controller">
+        <ListPreference
+            android:defaultValue="1"
+            android:entries="@array/controllers"
+            android:entryValues="@array/controllers"
+            android:key="control_mode"
+            android:title="Controller's mode" />
     </PreferenceCategory>
+
+    <PreferenceCategory android:title="Detection">
+        <EditTextPreference
+            android:defaultValue="1.5"
+            android:inputType="number"
+            android:key="detect_threshold"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Detect threshold (default 1.5)" />
+
+        <com.onegravity.colorpicker.ColorPickerPreference
+            android:key="upper_color"
+            android:title="Color upper range" />
+
+        <com.onegravity.colorpicker.ColorPickerPreference
+            android:key="lower_color"
+            android:title="Color lower range" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Debug">
+        <com.onegravity.colorpicker.ColorPickerPreference
+            android:defaultValue="@color/detect"
+            android:key="detect_color"
+            android:title="Detected rectangle color" />
+        <com.onegravity.colorpicker.ColorPickerPreference
+            android:defaultValue="@color/select"
+            android:key="select_color"
+            android:title="Selected rectangle color" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="is_draw_contours"
+            android:title="Draw contours?" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="is_draw_rectangles"
+            android:title="Draw rectangles?" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="is_draw_error"
+            android:title="Draw error info?" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="is_draw_thumbnail"
+            android:title="Draw thumbnail?" />
+        <ListPreference
+            android:defaultValue="1"
+            android:entries="@array/cameraSizes"
+            android:entryValues="@array/cameraSizes"
+            android:key="camera_size"
+            android:title="Camera size (smaller is faster)" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="is_streaming"
+            android:title="Stream to PC (experimental)?" />
+    </PreferenceCategory>
+
 </PreferenceScreen>
