@@ -12,6 +12,7 @@ import com.worker.natrobotcontroller.R
 import com.worker.natrobotcontroller.activities.MainActivity
 import kotlinx.android.synthetic.main.controller.view.*
 import kotlinx.android.synthetic.main.joystick.view.*
+import org.jetbrains.anko.doAsync
 import java.io.IOException
 
 /**
@@ -24,7 +25,7 @@ class JoystickFragment : Fragment() {
     var connect_status: TextView? = null
     override fun onCreateView(inflater: LayoutInflater?, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val connect = (activity as MainActivity).connect
-        var v: View? = null
+        val v: View?
         if (mode == "Joystick") {
             v = inflater?.inflate(R.layout.joystick, container, false)
             v!!.joystickL.setOnMoveListener({ angle, strength ->
@@ -71,6 +72,13 @@ class JoystickFragment : Fragment() {
             })
             connect_status = v.connect_statusc
         }
+        activity.doAsync {
+            while (true) {
+                val line = connect?.socket?.inputStream?.bufferedReader()?.readLine()
+                activity.runOnUiThread { connect_status?.setText("Front : $line cm") }
+                Thread.sleep(300)
+            }
+        }
         return v
     }
 
@@ -93,14 +101,13 @@ class JoystickFragment : Fragment() {
         }
     }
 
-
     private fun sendCommand(connect: ConnectFragment?, command: String) {
         if (connect?.socket == null) {
             connect_status?.setText("Not connected")
         } else
 
             try {
-                connect.socket?.getOutputStream()?.write(command.toByteArray())
+                connect.socket?.outputStream?.write(command.toByteArray())
                 connect_status?.setText("Connected")
             } catch (e: IOException) {
                 e.printStackTrace()

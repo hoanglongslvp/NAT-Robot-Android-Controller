@@ -97,10 +97,14 @@ void setLeftSpeed(int speed) {
 	}
 }
 void loop() {
-	if (counter++ > 10) {
-		counter = 0;
+	if (counter++ > 360) {
+		counter = 0;	}
+	if(counter%10==0){
 		dispDistance();
 		dispSpeed();
+	}
+	if(counter%2==0){
+		Serial.print(String()+"f"+getDistance(frontTrigger, frontEcho)+"\n");
 	}
 	delay(50);
 

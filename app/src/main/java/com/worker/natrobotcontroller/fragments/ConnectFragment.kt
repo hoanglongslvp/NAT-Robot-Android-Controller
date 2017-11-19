@@ -116,6 +116,7 @@ class ConnectFragment : Fragment() {
                             device = devices[i]
                             log("Select +$i +${names[i]}")
                             startConnecting()
+                            blue.cancelDiscovery()
                         })
                     }
                 }
