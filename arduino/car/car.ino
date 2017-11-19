@@ -1,7 +1,7 @@
+#include "Arduino.h"
 #include <LiquidCrystal_I2C.h>
-//#include <Wire.h>/
 
-LiquidCrystal_I2C lcd(0x3F,16,2);
+LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
 #define enA 10
 #define in1 9
@@ -10,167 +10,101 @@ LiquidCrystal_I2C lcd(0x3F,16,2);
 #define in3 4
 #define in4 3
 
-char blue = '0';//Bien nhan du lieu bluetooth
+const int frontTrigger = 7;     // chân trig của HC-SR05
+const int frontEcho = 6;     // chân echo của HC-SR05
+const int backTrigger = 13;     // chân trig của HC-SR05
+const int backEcho = 12;     // chân echo của HC-SR05
+int lSpeed = 0;
+int rSpeed = 0;
+int counter = 0;
 
-#define TRIG_PIN 7
-#define ECHO_PIN 6
-//
-const int trig = 7;     // chân trig của HC-SR05
-const int echo = 6;     // chân echo của HC-SR05
-
-//
-#define TIME_OUT 30
-
-int getDistance()
-{
-  long duration, distanceCm;
-   
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(5);
-  digitalWrite(TRIG_PIN, LOW);
-  
-  duration = pulseIn(ECHO_PIN, HIGH);
- 
-  // convert to distance
-  distanceCm = duration *340/ 20/1000 ;
-  
-  return distanceCm;
+int getDistance(int trigger, int echo) {
+	long duration, distanceCm;
+	digitalWrite(trigger, LOW);
+	delayMicroseconds(2);
+	digitalWrite(trigger, HIGH);
+	delayMicroseconds(5);
+	digitalWrite(trigger, LOW);
+	duration = pulseIn(echo, HIGH);
+	distanceCm = duration * 340 / 20 / 1000;
+	return distanceCm;
 }
 
 void setup() {
-  // put your setup code here, to run once:
-  //khởi tạo blue + chan dong co
-  Serial.begin(9600);
-  pinMode( enA, OUTPUT );
-  pinMode( in1, OUTPUT );
-  pinMode( in2, OUTPUT );
-  pinMode( enB, OUTPUT );
-  pinMode( in3, OUTPUT );
-  pinMode( in4, OUTPUT );
+	Serial.begin(9600);
 
-//  pinMode(TRIG_PIN, OUTPUT);
-//  pinMode(ECHO_PIN, INPUT);
-//
-  pinMode(trig,OUTPUT);   // chân trig sẽ phát tín hiệu
-  pinMode(echo,INPUT);    // chân echo sẽ nhận tín hiệu
+	pinMode( enA, OUTPUT);
+	pinMode( in1, OUTPUT);
+	pinMode( in2, OUTPUT);
+	pinMode( enB, OUTPUT);
+	pinMode( in3, OUTPUT);
+	pinMode( in4, OUTPUT);
 
-  lcd.begin();
-  lcd.backlight();  
-  lcd.setCursor(0,0);
-  lcd.print("    NAT TEAM    ");
-  lcd.setCursor(0,1); 
-  lcd.print("AUTOCAR NAT TEAM"); 
-//  delay(5000);
-  lcd.clear();
+	pinMode(frontTrigger, OUTPUT);   // chân trig sẽ phát tín hiệu
+	pinMode(backTrigger, OUTPUT);   // chân trig sẽ phát tín hiệu
+	pinMode(frontEcho, INPUT);    // chân echo sẽ nhận tín hiệu
+	pinMode(backEcho, INPUT);    // chân echo sẽ nhận tín hiệu
+
+	lcd.begin();
+	lcd.backlight();
+	lcd.setCursor(0, 0);
+	lcd.print("    NAT TEAM    ");
+	lcd.setCursor(0, 1);
+	lcd.print("AUTOCAR NAT TEAM");
+//	delay(1000);
+	lcd.clear();
 }
 
-void tien(){
-  analogWrite( enA, 255 );
-  digitalWrite( in1, HIGH );
-  digitalWrite( in2, LOW );
-  analogWrite( enB, 255 );
-  digitalWrite( in3, HIGH );
-  digitalWrite( in4, LOW );
-  }
+void dispDistance() {
+	lcd.clear();
+	lcd.setCursor(0, 0);
+	lcd.print("F: ");
+	lcd.print(getDistance(frontTrigger, frontEcho));
+	lcd.print(" B: ");
+	lcd.print(getDistance(backTrigger, backEcho));
+}
 
-void lui(){
-  analogWrite( enA, 200 );
-  digitalWrite( in1, LOW );
-  digitalWrite( in2, HIGH );
-  analogWrite( enB, 200 );
-  digitalWrite( in3, LOW );
-  digitalWrite( in4, HIGH );
-  }
+void dispSpeed() {
+//	lcd.clear();
+	lcd.setCursor(0, 1);
+	lcd.print("L: ");
+	lcd.print(lSpeed);
+	lcd.print(" R: ");
+	lcd.print(rSpeed);
+}
 
-void rePhai(){
-  analogWrite( enA, 200 );
-  digitalWrite( in1, HIGH );
-  digitalWrite( in2, LOW );
-  analogWrite( enB, 200 );
-  digitalWrite( in3, LOW );
-  digitalWrite( in4, HIGH );
-  dung();
-  delay(100);
-  analogWrite( enA, 200 );
-  digitalWrite( in1, HIGH );
-  digitalWrite( in2, LOW );
-  analogWrite( enB, 200 );
-  digitalWrite( in3, LOW );
-  digitalWrite( in4, HIGH );
-  }
+void setRightSpeed(int speed) {
+	if (speed < 0) {
+		analogWrite( enB, -speed);
+		digitalWrite( in3, LOW);
+		digitalWrite( in4, HIGH);
+	} else {
+		analogWrite( enB, speed);
+		digitalWrite( in3, HIGH);
+		digitalWrite( in4, LOW);
+	}
+}
 
-void reTrai(){
-  analogWrite( enA, 200 );
-  digitalWrite( in1, LOW );
-  digitalWrite( in2, HIGH );
-  analogWrite( enB, 200 );
-  digitalWrite( in3, HIGH );
-  digitalWrite( in4, LOW );
-  dung();
-  analogWrite( enA, 200 );
-  digitalWrite( in1, LOW );
-  digitalWrite( in2, HIGH );
-  analogWrite( enB, 200 );
-  digitalWrite( in3, HIGH );
-  digitalWrite( in4, LOW );
-  delay(50);
-  }
-
-void dung(){
-  digitalWrite( in1, LOW );
-  digitalWrite( in2, LOW );
-  digitalWrite( in3, LOW );
-  digitalWrite( in4, LOW );
-  }
-
-//void tangToc(){
-//  int i;
-//  for( i=0;i<256;i++ ){
-//    analogWrite( enA, i );
-//    digitalWrite( in1, HIGH );
-//    digitalWrite( in2, LOW );
-//    analogWrite( enB, i );
-//    digitalWrite( in3, HIGH );
-//    digitalWrite( in4, LOW );
-//    delay(1500);
-//    }
-//    digitalWrite( in1, LOW );
-//    digitalWrite( in2, LOW );
-//    digitalWrite( in3, LOW );
-//    digitalWrite( in4, LOW );
-//  }
-int i=0;
-void dispDistance(){
-  lcd.clear();
-  lcd.setCursor(0,0);
-  String text="";
-  lcd.print(text+ "Cm:" +  getDistance());
-  delay(1000);
+void setLeftSpeed(int speed) {
+	if (speed < 0) {
+		analogWrite( enA, -speed);
+		digitalWrite( in1, LOW);
+		digitalWrite( in2, HIGH);
+	} else {
+		analogWrite( enA, speed);
+		digitalWrite( in1, HIGH);
+		digitalWrite( in2, LOW);
+	}
 }
 void loop() {
-  dispDistance();
-//  unsigned long duration1; // biến đo thời gian
-//  int distance1;           // biến lưu khoảng cách
-//  long distance = GetDistance();
-//    digitalWrite(trig,0);   // tắt chân trig
-//    delayMicroseconds(2);
-//    digitalWrite(trig,1);   // phát xung từ chân trig
-//    delayMicroseconds(5);   // xung có độ dài 5 microSeconds
-//    digitalWrite(trig,0);   // tắt chân trig
-//    // Đo độ rộng xung HIGH ở chân echo. 
-//    duration1 = pulseIn(echo,HIGH);  
-//    // Tính khoảng cách đến vật.
-//    distance1 = int(duration1/2/29.1);
+	if (counter++ > 10) {
+		counter = 0;
+		dispDistance();
+		dispSpeed();
+	}
+	delay(50);
 
-//    Serial.print("Khoang cach Truoc (cm): ");
-//    Serial.println(distance1);
-//    Serial.print("Khoang cach Sau (cm): ");
-//    Serial.println(distance);
-//    delay(50);
-
-    //Tinh toan Voltage
+	//Tinh toan Voltage
 //    int sensorValue = analogRead(A0); //read the A0 pin value
 //    float voltage = sensorValue * (5.0 / 1023.0);
 //    //Serial.println(voltage);
@@ -184,58 +118,19 @@ void loop() {
 //    lcd.print("Battery = ");
 //    lcd.print(battery);
 //    lcd.print("%");
-    
-//  if (distance1 <= 35){
-//    rePhai();
-//    if (distance1 ==0){
-//      tien();
-//    }
-//   } else {
-//      tien();
-//   }
-//Robot_move
-//    Serial.println(blue);
-//    Serial.println(i++);
-//    delay(1000);
-//    if( Serial.available()>0 )
-//      {
-//        blue = Serial.read();
-//        Serial.println(blue);
-//      }
-//    if( blue == '1' )//di thang
-//      {
-//        Serial.println("Move Forward");
-//        tien();
-//        blue=0;
-//        delay(5);
-//      }
-//     if( blue == '2' )//lui
-//      {
-//        Serial.println("Move Backward");
-//        lui();
-//        blue=0;
-//        delay(5);
-//      }
-//     if( blue == '3' )//re trai
-//      {
-//        Serial.println("Rotate Left");
-//        reTrai();
-////        blue=0;
-//        delay(5);
-//      }
-//     if( blue == '4' )//re Phai
-//      {
-//        Serial.println("Rotate Right");
-//        rePhai();
-////        blue=0;
-//        delay(5);
-//      }
-//      if( blue == '6' )//Dung dong co
-//      {
-//        Serial.println("STOP");
-//        dung();
-//        blue=0;
-//        delay(5);
-//      }
+
+	while (Serial.available() > 0) {
+		String cmd = Serial.readStringUntil(';');
+		int speed = cmd.substring(1, cmd.length()).toInt();
+		Serial.println("Read command: speed = " + speed);
+		if (cmd[0] == 'l') {
+			lSpeed = speed;
+			setLeftSpeed(speed);
+		} else {
+			rSpeed = speed;
+			setRightSpeed(speed);
+		}
+		delay(1);
+	}
 
 }
