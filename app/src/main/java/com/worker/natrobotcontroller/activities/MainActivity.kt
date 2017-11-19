@@ -18,7 +18,6 @@ import com.github.kayvannj.permission_utils.PermissionUtil
 import com.worker.natrobotcontroller.R
 import com.worker.natrobotcontroller.fragments.CameraSightFragment
 import com.worker.natrobotcontroller.fragments.ConnectFragment
-import com.worker.natrobotcontroller.fragments.ControllerFragment
 import com.worker.natrobotcontroller.fragments.JoystickFragment
 import kotlinx.android.synthetic.main.activity_main.*
 
@@ -38,12 +37,8 @@ class MainActivity : AppCompatActivity() {
                 main_pager.currentItem = 1
                 return@OnNavigationItemSelectedListener true
             }
-            R.id.navigation_control -> {
-                main_pager.currentItem = 2
-                return@OnNavigationItemSelectedListener true
-            }
             R.id.navigation_joystick -> {
-                main_pager.currentItem = 3
+                main_pager.currentItem = 2
                 return@OnNavigationItemSelectedListener true
             }
         }
@@ -54,7 +49,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        startActivity(Intent(this, SettingActivity::class.java))
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); //don't let the screen turn off
         setContentView(R.layout.activity_main)
@@ -62,7 +56,7 @@ class MainActivity : AppCompatActivity() {
         camera = CameraSightFragment()
         connect = ConnectFragment()
         main_pager.adapter = object : FragmentPagerAdapter(supportFragmentManager) {
-            val fragments = listOf(connect as Fragment, camera as Fragment, ControllerFragment(), JoystickFragment())
+            val fragments = listOf(connect as Fragment, camera as Fragment,  JoystickFragment())
             override fun getItem(position: Int): Fragment {
                 return fragments[position]
             }
@@ -89,7 +83,7 @@ class MainActivity : AppCompatActivity() {
             }
 
         })
-        main_pager.offscreenPageLimit = 4
+        main_pager.offscreenPageLimit = 3
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener)
         askForPermission()
     }

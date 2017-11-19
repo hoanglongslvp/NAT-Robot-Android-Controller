@@ -30,6 +30,7 @@
             </intent-filter>
         </activity>
         <activity
+            android:screenOrientation="landscape"
             android:name=".activities.SettingActivity"
             android:label="NAT Setting">
             <intent-filter>

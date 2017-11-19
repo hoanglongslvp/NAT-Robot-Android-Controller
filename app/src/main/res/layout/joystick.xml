@@ -17,10 +17,19 @@
         app:JV_borderWidth="8dp"
         app:JV_buttonColor="#FF6E40" />
 
-    <View
+    <FrameLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1" />
+        android:layout_weight="1" >
+
+        <TextView
+            android:id="@+id/connect_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:text="TextView"
+            android:textAppearance="@style/TextAppearance.AppCompat.Button" />
+    </FrameLayout>
 
     <io.github.controlwear.virtual.joystick.android.JoystickView
         android:id="@+id/joystickR"

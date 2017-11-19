@@ -16,8 +16,6 @@ class SettingActivity : AppBarSetting() {
         super.onCreate(savedInstanceState, persistentState)
         getActionBar().setDisplayShowTitleEnabled(true);
         title = "NAT Setting"
-//        fragmentManager.beginTransaction().replace(android.R.id.content,
-//                Prefs1Fragment()).commit()
     }
 
     override fun onBuildHeaders(target: MutableList<Header>?) {
