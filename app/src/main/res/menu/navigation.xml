@@ -15,5 +15,9 @@
         android:id="@+id/navigation_control"
         android:icon="@drawable/ic_open_with_black_24dp"
         android:title="@string/manually_control" />
+    <item
+        android:id="@+id/navigation_joystick"
+        android:icon="@drawable/ic_videogame_asset_black_24dp"
+        android:title="@string/joystick" />
 
 </menu>

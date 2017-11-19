@@ -1,4 +1,4 @@
-package com.worker.natrobotcontroller
+package com.worker.natrobotcontroller.models
 
 import android.app.Activity
 import android.graphics.BitmapFactory

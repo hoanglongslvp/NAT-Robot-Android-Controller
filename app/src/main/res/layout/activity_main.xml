@@ -5,7 +5,7 @@
     android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.worker.natrobotcontroller.MainActivity">
+    tools:context="com.worker.natrobotcontroller.activities.MainActivity">
 
     <android.support.design.widget.BottomNavigationView
         android:id="@+id/navigation"
@@ -19,7 +19,7 @@
         app:menu="@menu/navigation" />
 
 
-    <android.support.v4.view.ViewPager
+    <com.worker.natrobotcontroller.customView.NoSwipeViewPager
         android:id="@+id/main_pager"
         android:layout_width="0dp"
         android:layout_height="0dp"

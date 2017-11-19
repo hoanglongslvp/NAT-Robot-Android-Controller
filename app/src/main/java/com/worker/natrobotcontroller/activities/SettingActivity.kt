@@ -1,10 +1,10 @@
-package com.worker.natrobotcontroller
+package com.worker.natrobotcontroller.activities
 
 import android.os.Bundle
 import android.os.PersistableBundle
 import android.preference.PreferenceActivity
 import android.preference.PreferenceFragment
-
+import com.worker.natrobotcontroller.R
 
 
 class SettingActivity : PreferenceActivity() {

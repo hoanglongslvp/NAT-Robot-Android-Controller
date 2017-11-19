@@ -1,4 +1,4 @@
-package com.worker.natrobotcontroller
+package com.worker.natrobotcontroller.fragments
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.worker.natrobotcontroller.R
 import kotlinx.android.synthetic.main.connect.view.*
 import org.jetbrains.anko.selector
 import java.io.IOException
@@ -32,9 +33,6 @@ class ConnectFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater?, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val v = inflater?.inflate(R.layout.connect, container, false)
         setupUI(v as View)
-        activity.selector("Select device", listOf("te", "sss"), { dialogInterface, i ->
-            log("Select +$i")
-        })
         return v
     }
 
@@ -112,6 +110,14 @@ class ConnectFragment : Fragment() {
                     val d = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                     devices.add(d)
                     log("Found " + d.name + " at " + d.address)
+                    val names = devices.map { "Devices " + it.name }
+                    activity.runOnUiThread {
+                        activity.selector("Select device", names, { dialogInterface, i ->
+                            device = devices[i]
+                            log("Select +$i +${names[i]}")
+                            startConnecting()
+                        })
+                    }
                 }
 
                 BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
@@ -121,14 +127,6 @@ class ConnectFragment : Fragment() {
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                     log("Discovery finished")
                     blue.cancelDiscovery()
-                    val names = devices.map { "" + it.name }
-                    activity.runOnUiThread {
-                        activity.selector("Select device", names, { dialogInterface, i ->
-                            device = devices[i]
-                            log("Select +$i +${names[i]}")
-                            startConnecting()
-                        })
-                    }
 
                 }
             }

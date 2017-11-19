@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_margin="20dp"
+    android:orientation="horizontal">
+
+    <io.github.controlwear.virtual.joystick.android.JoystickView
+        android:id="@+id/joystickL"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_weight="1"
+        app:JV_backgroundColor="#009688"
+        app:JV_borderColor="#00796B"
+        app:JV_borderWidth="8dp"
+        app:JV_buttonColor="#FF6E40" />
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1" />
+
+    <io.github.controlwear.virtual.joystick.android.JoystickView
+        android:id="@+id/joystickR"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_weight="1"
+        app:JV_backgroundColor="#009688"
+        app:JV_borderColor="#00796B"
+        app:JV_borderWidth="8dp"
+        app:JV_buttonColor="#FF6E40" />
+</LinearLayout>

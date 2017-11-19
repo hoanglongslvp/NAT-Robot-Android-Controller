@@ -1,11 +1,12 @@
-package com.worker.natrobotcontroller
+package com.worker.natrobotcontroller.fragments
 
-import android.content.Intent
 import android.os.Bundle
 import android.support.v4.app.Fragment
 import android.support.v7.widget.SwitchCompat
 import android.util.Log
 import android.view.*
+import com.worker.natrobotcontroller.R
+import com.worker.natrobotcontroller.models.TrafficSign
 import kotlinx.android.synthetic.main.camera_sight.view.*
 import org.opencv.android.CameraBridgeViewBase
 import org.opencv.android.InstallCallbackInterface
@@ -258,12 +259,7 @@ class CameraSightFragment : Fragment() {
     }
 
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.setting_action -> startActivity(Intent(activity, SettingActivity::class.java))
-        }
-        return super.onOptionsItemSelected(item)
-    }
+
 
 
     private fun switchCamera() {
