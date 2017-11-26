@@ -65,7 +65,7 @@ class CameraSightFragment : Fragment() {
 
                     contours.forEach { contour ->
                         val rect = getMinAreaRect(contour)
-                        if (rect.size.width > 20 && rect.size.height > 20 ) {
+                        if (rect.size.width > 20 && rect.size.height > 20) {
                             if (drawRect)
                                 drawRotatedRect(rect, rgba, detectColor)
 
@@ -82,7 +82,7 @@ class CameraSightFragment : Fragment() {
                                 else if (best.error < bestResult!!.error)
                                     bestResult = best
                                 if (drawError)
-                                    Imgproc.putText(rgba,  best.sign.msg + "\n" + best.error, bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, selectColor, 2)
+                                    Imgproc.putText(rgba, best.sign.msg + "\n" + best.error, bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, selectColor, 2)
                             }
                         }
                         contour.release()
@@ -271,10 +271,12 @@ class CameraSightFragment : Fragment() {
 
 
     private fun setSize(f: Int, s: Int, t: Int, l: Int) {
-        view!!.first.visibility = f
-        view!!.second.visibility = s
-        view!!.third.visibility = t
-        view!!.last.visibility = l
+        if (view != null) {
+            view!!.first.visibility = f
+            view!!.second.visibility = s
+            view!!.third.visibility = t
+            view!!.last.visibility = l
+        }
     }
 
     fun switchCam(enable: Boolean) {

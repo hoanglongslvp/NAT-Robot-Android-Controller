@@ -15,6 +15,9 @@ import android.view.View
 import android.view.ViewGroup
 import com.worker.natrobotcontroller.R
 import kotlinx.android.synthetic.main.connect.view.*
+import org.jetbrains.anko.indeterminateProgressDialog
+import org.jetbrains.anko.progressDialog
+import org.jetbrains.anko.runOnUiThread
 import org.jetbrains.anko.selector
 import java.io.IOException
 import java.util.*
@@ -44,6 +47,12 @@ class ConnectFragment : Fragment() {
             scan()
         }
 
+        v.paired.setOnClickListener {
+            devices.clear()
+            blue.bondedDevices.forEach { devices.add(it) }
+            getConnect()
+        }
+
     }
 
     override fun onResume() {
@@ -63,18 +72,22 @@ class ConnectFragment : Fragment() {
 
     private fun scan() {
         log("Start scanning")
+        activity.indeterminateProgressDialog("Start scanning", "Bluetooth").show()
         blue.startDiscovery()
     }
 
     fun log(s: String) {
-        view?.log?.append(s + "\n")
-        Log.d("BLUETOOTH", s)
+        context.runOnUiThread {
+//            view?.log?.append(s + "\n")
+            Log.d("BLUETOOTH", s)
+        }
     }
 
 
     private val mBroadcast = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
+
                 BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
                     val mDevice = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                     when (mDevice.bondState) {
@@ -89,6 +102,7 @@ class ConnectFragment : Fragment() {
                         }
                         BluetoothDevice.BOND_NONE -> {
                             isBoned = false
+                            socket=null
                             log("Broke boning to device ${device?.name} at address :${device?.address}")
                         }
                     }
@@ -110,15 +124,7 @@ class ConnectFragment : Fragment() {
                     val d = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                     devices.add(d)
                     log("Found " + d.name + " at " + d.address)
-                    val names = devices.map { "Devices " + it.name }
-                    activity.runOnUiThread {
-                        activity.selector("Select device", names, { dialogInterface, i ->
-                            device = devices[i]
-                            log("Select +$i +${names[i]}")
-                            startConnecting()
-                            blue.cancelDiscovery()
-                        })
-                    }
+                    getConnect()
                 }
 
                 BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
@@ -134,19 +140,34 @@ class ConnectFragment : Fragment() {
         }
     }
 
+    private fun getConnect() {
+        val names = devices.map { "Devices " + it.name }
+        activity.runOnUiThread {
+            activity.selector("Select device", names, { dialogInterface, i ->
+                device = devices[i]
+                log("Select +$i +${names[i]}")
+                startConnecting()
+                blue.cancelDiscovery()
+            })
+        }
+    }
+
     private fun startConnecting() {
         activity.run {
+            val dialog = progressDialog("Connecting, please wait...", "Bluetooth")
             try {
+                runOnUiThread { dialog.show() }
                 socket = device?.createInsecureRfcommSocketToServiceRecord(myUUID)
-                runOnUiThread { log("Try to connect to socket") }
+                log("Try to connect to socket")
                 socket?.connect()
-                runOnUiThread { log("Connected to socket") }
+                log("Connected to socket")
             } catch (e: IOException) {
                 e.printStackTrace()
-                runOnUiThread {
-                    log("Connect to socket fail : " + e.message)
-                }
+                log("Connect to socket fail : " + e.message)
+
                 socket = null
+            } finally {
+                dialog.dismiss()
             }
         }
     }

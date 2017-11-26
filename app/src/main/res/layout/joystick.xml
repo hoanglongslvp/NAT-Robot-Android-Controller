@@ -12,6 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:layout_weight="1"
+        android:visibility="invisible"
         app:JV_backgroundColor="#009688"
         app:JV_borderColor="#00796B"
         app:JV_borderWidth="8dp"
