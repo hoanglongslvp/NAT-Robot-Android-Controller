@@ -9,7 +9,9 @@ import android.view.View
 import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.view.ViewGroup
+import android.widget.SeekBar
 import com.worker.natrobotcontroller.R
+import com.worker.natrobotcontroller.activities.MainActivity
 import com.worker.natrobotcontroller.models.MatchSignResult
 import com.worker.natrobotcontroller.models.TrafficSign
 import kotlinx.android.synthetic.main.camera_sight.view.*
@@ -38,6 +40,8 @@ class CameraSightFragment : Fragment() {
     val matStack = mutableListOf<Mat>()
     val signs = mutableListOf<TrafficSign>()
     var bestResult: MatchSignResult? = null
+    var signMatchSize = 0
+    val preferences by lazy { PreferenceManager.getDefaultSharedPreferences(context) }
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val v = inflater.inflate(R.layout.camera_sight, container, false)
         setupView(v)
@@ -65,7 +69,7 @@ class CameraSightFragment : Fragment() {
 
                     contours.forEach { contour ->
                         val rect = getMinAreaRect(contour)
-                        if (rect.size.width > 20 && rect.size.height > 20) {
+                        if (rect.size.width > 50 && rect.size.height > 50) {
                             if (drawRect)
                                 drawRotatedRect(rect, rgba, detectColor)
 
@@ -79,10 +83,10 @@ class CameraSightFragment : Fragment() {
                             if (best != null) {
                                 if (bestResult == null)
                                     bestResult = best
-                                else if (best.error < bestResult!!.error)
+                                else if (best.rect.size.area() > bestResult!!.rect.size.area())
                                     bestResult = best
                                 if (drawError)
-                                    Imgproc.putText(rgba, best.sign.msg + "\n" + best.error, bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, selectColor, 2)
+                                    Imgproc.putText(rgba, best.sign.msg + ":" + best.error, bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, detectColor, 2)
                             }
                         }
                         contour.release()
@@ -91,6 +95,10 @@ class CameraSightFragment : Fragment() {
                     if (bestResult != null) {
                         if (drawRect) {
                             drawRotatedRect(bestResult!!.rect, rgba, selectColor)
+                            if(bestResult!!.rect.size.height>=signMatchSize){
+                                trigger(bestResult!!.sign.direction)
+                                Imgproc.putText(rgba, "Trigger", bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, selectColor, 2)
+                            }
                         }
                         if (drawThumbnail) {
                             val cropped = Mat()
@@ -99,11 +107,38 @@ class CameraSightFragment : Fragment() {
                             cropped.copyTo(Mat(rgba, Rect(20, 20, cropped.width(), cropped.height())))
                         }
                     }
+
                 }
+                drawSignSize(rgba)
                 return rgba
             }
 
         })
+        v.signSizeBar.max=v.cameraView.height
+        v.signSizeBar.progress=signMatchSize
+        v.signSizeBar.setOnSeekBarChangeListener(object :SeekBar.OnSeekBarChangeListener{
+            override fun onProgressChanged(p0: SeekBar?, progress: Int, isUser: Boolean) {
+                signMatchSize=progress
+            }
+
+            override fun onStartTrackingTouch(p0: SeekBar?) {
+
+            }
+
+            override fun onStopTrackingTouch(p0: SeekBar?) {
+                preferences.edit().putInt("sign_size",signMatchSize).apply()
+            }
+
+        })
+    }
+
+    private fun trigger(direction: Int) {
+        (activity as MainActivity).controller?.trigger(direction)
+    }
+
+    private fun drawSignSize(rgba: Mat) {
+        Imgproc.line(rgba, Point(rgba.width().toDouble(), 10.0),Point(rgba.width().toDouble()-20, 10.0),selectColor,2)
+        Imgproc.line(rgba, Point(rgba.width().toDouble(), 10.0+signMatchSize),Point(rgba.width().toDouble()-20, 10.0+signMatchSize),selectColor,2)
     }
 
     private fun getBestMatchSign(thumbnail: Mat, rect: RotatedRect): MatchSignResult? {
@@ -154,10 +189,10 @@ class CameraSightFragment : Fragment() {
     }
 
     private fun preloadImage() {
-        signs.add(TrafficSign("Turn right", activity, R.drawable.turnright))
-        signs.add(TrafficSign("Turn left", activity, R.drawable.turnleft))
-        signs.add(TrafficSign("Turn back", activity, R.drawable.turnback))
-        signs.add(TrafficSign("Move straight", activity, R.drawable.movestraight))
+        signs.add(TrafficSign("Turn right", activity, R.drawable.turnright,TrafficSign.RIGHT))
+        signs.add(TrafficSign("Turn left", activity, R.drawable.turnleft,TrafficSign.LEFT))
+        signs.add(TrafficSign("Turn back", activity, R.drawable.turnback,TrafficSign.BACK))
+        signs.add(TrafficSign("Move straight", activity, R.drawable.movestraight,TrafficSign.STRAIGHT))
     }
 
 
@@ -175,7 +210,7 @@ class CameraSightFragment : Fragment() {
     }
 
     private fun reloadSetting() {
-        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+
         drawRect = preferences.getBoolean("is_draw_rectangles", true)
         drawContours = preferences.getBoolean("is_draw_contours", true)
         drawError = preferences.getBoolean("is_draw_error", true)
@@ -183,6 +218,11 @@ class CameraSightFragment : Fragment() {
         isStreaming = preferences.getBoolean("is_streaming", false)
         detectThreshold = preferences.getString("detect_threshold", "1.5").toDouble()
         cameraSize = preferences.getString("camera_size", "Fullsize")
+        signMatchSize = preferences.getInt("sign_size", 100)
+        if (view != null){
+            view?.signSizeBar?.max = view?.cameraView?.height!!
+            view?.signSizeBar?.progress=signMatchSize
+        }
     }
 
     //fix the rotated angle

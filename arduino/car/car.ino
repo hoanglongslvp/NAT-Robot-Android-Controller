@@ -211,7 +211,6 @@ void processBluetooth() {
 			break;
 		case 's':
 			maxSpeed = speed;
-			isStopping = false;
 			break;
 		case '_': //rotate
 			desiredAngle = speed;

@@ -10,7 +10,14 @@ import org.opencv.imgproc.Imgproc.COLOR_RGBA2GRAY
 /**
  * Created by hataketsu on 11/11/17.
  */
-class TrafficSign(_msg: String, mainActivity: Activity, res_id: Int) {
+class TrafficSign(_msg: String, mainActivity: Activity, res_id: Int,val direction:Int) {
+    companion object {
+        val STRAIGHT=0;
+        val BACK=2;
+        val LEFT=1;
+        val RIGHT=3;
+    }
+
     val img = Mat()
     var msg = ""
 

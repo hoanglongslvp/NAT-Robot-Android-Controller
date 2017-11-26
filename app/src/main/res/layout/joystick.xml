@@ -18,7 +18,8 @@
         app:JV_borderWidth="8dp"
         app:JV_buttonColor="#FF6E40" />
 
-    <FrameLayout
+    <LinearLayout
+        android:orientation="vertical"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1" >
@@ -30,7 +31,16 @@
             android:gravity="center_horizontal"
             android:text="TextView"
             android:textAppearance="@style/TextAppearance.AppCompat.Button" />
-    </FrameLayout>
+
+        <Button
+            android:id="@+id/reset_gyro"
+            style="@style/Widget.AppCompat.Button.Colored"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="40dp"
+            android:text="Reset gyro" />
+    </LinearLayout>
 
     <io.github.controlwear.virtual.joystick.android.JoystickView
         android:id="@+id/joystickR"

@@ -29,9 +29,10 @@ class JoystickFragment : Fragment() {
     var backDistance = 0
     var currentAngle = 0
     var desiredAngle = 0
-
+    var connect: ConnectFragment? = null
     override fun onCreateView(inflater: LayoutInflater?, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val connect = (activity as MainActivity).connect
+        this.connect = connect
         val v: View?
         if (mode == "Joystick") {
             v = inflater?.inflate(R.layout.joystick, container, false)
@@ -40,7 +41,11 @@ class JoystickFragment : Fragment() {
                 val cmd = "_${angle - 90};s$pwm;"
                 sendCommand(connect, cmd)
             }, 200)
+            v.reset_gyro.setOnClickListener {
+                sendCommand(connect,"g20;")
+            }
             connect_status = v.connect_status
+
         } else {
             v = inflater?.inflate(R.layout.controller, container, false)
             v!!.fowardBtn.setOnClickListener { sendCommand(connect, format("_0;")) }
@@ -83,7 +88,7 @@ class JoystickFragment : Fragment() {
 
                             }
                             activity.runOnUiThread {
-                                connect_status?.setText("Front : $frontDistance cm")
+                                connect_status?.setText("Current : $currentAngle cm")
                             }
                         }
                     } else Thread.sleep(1000)
@@ -125,13 +130,36 @@ class JoystickFragment : Fragment() {
         } else
             try {
                 connect.socket?.outputStream?.write(command.toByteArray())
-                connect_status?.setText("Connected")
-                connect.log("Sent")
             } catch (e: IOException) {
                 e.printStackTrace()
-                connect.log("Send command error " + e.message)
                 connect_status?.setText("Not connected")
             }
     }
+
+    private fun slimSendCommand(connect: ConnectFragment?, command: String) {
+        connect?.log("Try to send $command")
+        if (connect?.socket != null)
+                try {
+                    connect.socket?.outputStream?.write(command.toByteArray())
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+    }
+
+    fun trigger(direction: Int) {
+        var tmp = currentAngle + direction * 90
+        while (tmp < 0) tmp += 360
+        while (tmp > 360) tmp -= 360
+        if (tmp < 45)
+            tmp = 0
+        else if (tmp < 45 + 90)
+            tmp = 90
+        else if (tmp < 45 + 90 + 90)
+            tmp = 90 + 90
+        else if (tmp < 45 + 90 + 90 + 90)
+            tmp = 90 + 90 + 90
+        slimSendCommand(connect, "_$tmp;s250;")
+    }
+
 
 }

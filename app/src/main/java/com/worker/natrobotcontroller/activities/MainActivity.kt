@@ -25,7 +25,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 class MainActivity : AppCompatActivity() {
     var camera: CameraSightFragment? = null
     var connect: ConnectFragment? = null
-
+    var controller: JoystickFragment? = null
     private val mOnNavigationItemSelectedListener = BottomNavigationView.OnNavigationItemSelectedListener { item ->
         title = item.title
         when (item.itemId) {
@@ -55,8 +55,9 @@ class MainActivity : AppCompatActivity() {
 
         camera = CameraSightFragment()
         connect = ConnectFragment()
+        controller=JoystickFragment()
         main_pager.adapter = object : FragmentPagerAdapter(supportFragmentManager) {
-            val fragments = listOf(connect as Fragment, camera as Fragment,  JoystickFragment())
+            val fragments = listOf(connect as Fragment, camera as Fragment,  controller as Fragment)
             override fun getItem(position: Int): Fragment {
                 return fragments[position]
             }
