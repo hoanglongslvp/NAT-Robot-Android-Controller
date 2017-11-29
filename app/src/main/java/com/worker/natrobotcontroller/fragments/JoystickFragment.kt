@@ -12,7 +12,6 @@ import android.widget.SeekBar
 import com.worker.natrobotcontroller.R
 import com.worker.natrobotcontroller.activities.MainActivity
 import kotlinx.android.synthetic.main.controller.view.*
-import org.jetbrains.anko.activityUiThread
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.toast
 import java.io.IOException
@@ -116,9 +115,6 @@ class JoystickFragment : Fragment() {
                         }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    activityUiThread {
-                        view?.car_info?.setText(e.message)
-                    }
                 }
             }
         }

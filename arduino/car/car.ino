@@ -28,6 +28,10 @@ const int BACK_ECHO = 12;     // chân echo của HC-SR05
 int leftSpeed = 0;
 int rightSpeed = 0;
 
+int oldLeftSpeed = 0;
+int oldRightSpeed = 0;
+long pauseCounter = millis();
+
 double currentAngle = 0.0; //0-360 degrees
 double desiredAngle = 0.0; //0-360 degrees
 double remainingAngle = 0.0; //0-360 degrees
@@ -43,7 +47,7 @@ const int ROTATING_LEFT = 134;
 const int ROTATING_RIGHT = 135;
 int rotatingMode = ROTATING_LEFT;
 
-const int MIN_DISTANCE = 20;
+const int MIN_DISTANCE = 10;
 const int BLUETOOTH_RX = A2;
 const int BLUETOOTH_TX = A3;
 int count = 0;
@@ -55,15 +59,16 @@ MPU6050 mpu;							//gyroscope
 SoftwareSerial bluetooth(BLUETOOTH_RX, BLUETOOTH_TX);
 String reason = "nope";
 int getDistance(int trigger, int echo) {
-	return 30;
 	long duration, distanceCm;
 	digitalWrite(trigger, LOW);
 	delayMicroseconds(2);
 	digitalWrite(trigger, HIGH);
 	delayMicroseconds(5);
 	digitalWrite(trigger, LOW);
-	duration = pulseIn(echo, HIGH);
+	duration = pulseIn(echo, HIGH, 5000);
 	distanceCm = duration * 340 / 20 / 1000;
+	if (distanceCm == 0)
+		return 99;
 	return distanceCm;
 }
 
@@ -104,12 +109,15 @@ void setup() {
 }
 
 void dispDistance(int row) {
-	lcd.clear();
 	lcd.setCursor(0, row);
-	lcd.print("F: ");
+	lcd.print("F:");
 	lcd.print(getDistance(FRONT_TRIGGER, FRONT_ECHO));
-	lcd.print(" B: ");
+	lcd.print(" B:");
 	lcd.print(getDistance(BACK_TRIGGER, BACK_ECHO));
+	if (millis() < pauseCounter) {
+		lcd.print(" P:");
+		lcd.print(pauseCounter-millis());
+	}
 }
 
 const float MAX_BATTERY = 450;
@@ -228,10 +236,10 @@ void processBluetooth() {
 		}
 	}
 	if (count == 9) {
-		Serial.println(
-				(String) "f" + getDistance(FRONT_TRIGGER, FRONT_ECHO) + ";b"
-						+ getDistance(BACK_TRIGGER, BACK_ECHO) + ";c"
-						+ (int) currentAngle + ";d" + (int) desiredAngle + ";");
+//		Serial.println(
+//				(String) "f" + getDistance(FRONT_TRIGGER, FRONT_ECHO) + ";b"
+//						+ getDistance(BACK_TRIGGER, BACK_ECHO) + ";c"
+//						+ (int) currentAngle + ";d" + (int) desiredAngle + ";");
 
 		bluetooth.println(
 				(String) "f" + getDistance(FRONT_TRIGGER, FRONT_ECHO) + ";b"
@@ -347,11 +355,25 @@ void processSpeed() {
 	}
 }
 
+void pause() {
+	oldLeftSpeed = leftSpeed;
+	oldRightSpeed = rightSpeed;
+	pauseCounter = millis() + 5000;
+	stop("pause");
+}
+void unPause() {
+	setLeftSpeed(oldLeftSpeed);
+	setRightSpeed(oldRightSpeed);
+	pauseCounter = 0;
+	isStopping=false;
+}
+
 void processSonic() {
-	if ((getDistance(FRONT_TRIGGER, FRONT_ECHO) <= MIN_DISTANCE)
-//			|| (getDistance(BACK_TRIGGER, BACK_ECHO) <= MIN_DISTANCE)
-	)
-		stop("sonic");
+	if ((getDistance(FRONT_TRIGGER, FRONT_ECHO) <= MIN_DISTANCE))
+		pause();
+	else if (pauseCounter > 0) {
+		unPause();
+	}
 }
 
 void profile(void* func, String name) {
@@ -361,18 +383,25 @@ void profile(void* func, String name) {
 	Serial.println("Function " + name + " runs in " + delta + " micros");
 }
 
+void processPause() {
+	if (millis() > pauseCounter)
+		processSonic();
+}
+
 void main_loop() {
 	if (count++ > 10) {
 		dispSpeed(0);
 //		dispAngle(1);
-		dispBattery(1);
-		processSonic();
+//		dispBattery(1);
+		dispDistance(1);
+		processPause();
 		count = 0;
 	}
 	processBluetooth(); //those functions are very slow that can lower our FPS
 	processIR();
 	processGyro();
 	processSpeed();
+
 }
 
 long fps_timer = micros();
@@ -381,7 +410,7 @@ void loop() {
 	main_loop();
 	if (micros() - fps_timer > 1000000) {
 		fps_timer = micros();
-//		Serial.println((String) "FPS: " + fps_counter);
+		Serial.println((String) "FPS: " + fps_counter);
 		fps_counter = 0;
 	}
 	fps_counter++;
