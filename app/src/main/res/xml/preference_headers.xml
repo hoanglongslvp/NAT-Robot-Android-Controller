@@ -3,7 +3,7 @@
 
     <header android:fragment="com.worker.natrobotcontroller.activities.SettingActivity$Prefs1Fragment"
         android:icon="@drawable/ic_build_black_24dp"
-        android:title="Camera"
-        android:summary="Camera setting" />
+        android:title="Main setting"
+        android:summary="All setting" />
 
 </preference-headers>

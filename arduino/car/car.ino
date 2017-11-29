@@ -7,7 +7,8 @@
 #include <math.h>
 #include <SoftwareSerial.h>
 
-const int IR_RECV_PIN = A1;
+const int IR_RECV_PIN = 3;
+const int BATTERY_PIN = A1;
 const int enA = 10;
 const int in1 = 9;
 const int in2 = 8;
@@ -72,7 +73,7 @@ void setup() {
 	pinMode(enA, OUTPUT);
 	pinMode(in1, OUTPUT);
 	pinMode(in2, OUTPUT);
-
+	pinMode(IR_RECV_PIN, INPUT);
 	pinMode(enB, OUTPUT);
 	pinMode(in3, OUTPUT);
 	pinMode(in4, OUTPUT);
@@ -80,7 +81,7 @@ void setup() {
 	pinMode(BLUETOOTH_RX, INPUT);
 	pinMode(BLUETOOTH_TX, OUTPUT);
 	bluetooth.begin(9600);
-
+	pinMode(BATTERY_PIN, INPUT);
 	pinMode(FRONT_TRIGGER, OUTPUT);   	// chân trig sẽ phát tín hiệu
 	pinMode(BACK_TRIGGER, OUTPUT);   	// chân trig sẽ phát tín hiệu
 	pinMode(FRONT_ECHO, INPUT);    		// chân echo sẽ nhận tín hiệu
@@ -111,20 +112,21 @@ void dispDistance(int row) {
 	lcd.print(getDistance(BACK_TRIGGER, BACK_ECHO));
 }
 
-void dispBattery() { //not working
+const float MAX_BATTERY = 450;
+const float MIN_BATTERY = 200;
+
+void dispBattery(int row) { //not working
 //	Tinh toan Voltage
-	int sensorValue = analogRead(A0); //read the A0 pin value
-	float voltage = sensorValue * (5.0 / 1023.0);
+	int sensorValue = analogRead(BATTERY_PIN); //read the A0 pin value
+	float voltage = sensorValue * 5.0 * 5.24 / 1023.0;
 	//Serial.println(voltage);
-	lcd.setCursor(0, 0);
-	lcd.print("Voltage = ");
+	lcd.setCursor(0, row);
+	lcd.print("Bat: ");
 	lcd.print(voltage);
-	lcd.print(" V");
-	int battery; // phan tram pin
-	battery = ((sensorValue * (5.00 / 1023.00)) / 5 * 100);
-	lcd.setCursor(0, 1);
-	lcd.print("Battery = ");
-	lcd.print(battery);
+	lcd.print("V ");
+	float battery; // phan tram pin
+	battery = (sensorValue - MIN_BATTERY) * 100 / (MAX_BATTERY - MIN_BATTERY);
+	lcd.print((int) battery);
 	lcd.print("%");
 }
 
@@ -195,9 +197,7 @@ void recalibrate() {
 }
 
 void processBluetooth() {
-	Serial.println("avai");
 	while (bluetooth.available() > 0) {
-		Serial.println("until");
 		String cmd = bluetooth.readStringUntil(';');
 		int speed = cmd.substring(1, cmd.length()).toInt();
 		switch (cmd[0]) {
@@ -217,7 +217,6 @@ void processBluetooth() {
 			isStopping = false;
 			break;
 		case 'p': //pause
-			Serial.println("pause to read alll");
 			stop("blue pause");
 			return;
 			break;
@@ -228,11 +227,17 @@ void processBluetooth() {
 			break;
 		}
 	}
-	if (count == 9)
+	if (count == 9) {
+		Serial.println(
+				(String) "f" + getDistance(FRONT_TRIGGER, FRONT_ECHO) + ";b"
+						+ getDistance(BACK_TRIGGER, BACK_ECHO) + ";c"
+						+ (int) currentAngle + ";d" + (int) desiredAngle + ";");
+
 		bluetooth.println(
 				(String) "f" + getDistance(FRONT_TRIGGER, FRONT_ECHO) + ";b"
 						+ getDistance(BACK_TRIGGER, BACK_ECHO) + ";c"
 						+ (int) currentAngle + ";d" + (int) desiredAngle + ";");
+	}
 }
 
 void processIR() {
@@ -357,9 +362,10 @@ void profile(void* func, String name) {
 }
 
 void main_loop() {
-	if (count++ > 5) {
+	if (count++ > 10) {
 		dispSpeed(0);
-		dispAngle(1);
+//		dispAngle(1);
+		dispBattery(1);
 		processSonic();
 		count = 0;
 	}
@@ -375,7 +381,7 @@ void loop() {
 	main_loop();
 	if (micros() - fps_timer > 1000000) {
 		fps_timer = micros();
-		Serial.println((String) "FPS: " + fps_counter);
+//		Serial.println((String) "FPS: " + fps_counter);
 		fps_counter = 0;
 	}
 	fps_counter++;

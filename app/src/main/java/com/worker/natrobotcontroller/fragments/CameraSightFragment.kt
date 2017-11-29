@@ -14,10 +14,11 @@ import com.worker.natrobotcontroller.R
 import com.worker.natrobotcontroller.activities.MainActivity
 import com.worker.natrobotcontroller.models.MatchSignResult
 import com.worker.natrobotcontroller.models.TrafficSign
+import com.worker.natrobotcontroller.util.draw
+import com.worker.natrobotcontroller.util.fixRotation
 import kotlinx.android.synthetic.main.camera_sight.view.*
+import org.jetbrains.anko.toast
 import org.opencv.android.CameraBridgeViewBase
-import org.opencv.android.InstallCallbackInterface
-import org.opencv.android.LoaderCallbackInterface
 import org.opencv.android.OpenCVLoader
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
@@ -28,20 +29,17 @@ import org.opencv.imgproc.Imgproc
 class CameraSightFragment : Fragment() {
     var enableCamera = false
     var initedOpenCV = false
-    var drawRect = false
-    var drawContours = false
-    var drawError = false
-    var drawThumbnail = false
-    var isStreaming = false
+    var isDebug = false
     var cameraSize = "Fullsize"
     var detectThreshold = 1.5
-    val detectColor = Scalar(25.0, 118.0, 210.0);
-    val selectColor = Scalar(255.0, 64.0, 129.0);
+    val detectColor = Scalar(25.0, 118.0, 210.0)
+    val selectColor = Scalar(255.0, 64.0, 129.0)
     val matStack = mutableListOf<Mat>()
     val signs = mutableListOf<TrafficSign>()
     var bestResult: MatchSignResult? = null
     var signMatchSize = 0
     val preferences by lazy { PreferenceManager.getDefaultSharedPreferences(context) }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val v = inflater.inflate(R.layout.camera_sight, container, false)
         setupView(v)
@@ -64,16 +62,16 @@ class CameraSightFragment : Fragment() {
                 val contours = getContours(mask)
                 bestResult = null
                 if (contours.size > 0) { //we got a sign
-                    if (drawContours)
+                    if (isDebug)
                         Imgproc.drawContours(rgba, contours, -1, detectColor)
 
                     contours.forEach { contour ->
                         val rect = getMinAreaRect(contour)
-                        if (rect.size.width > 50 && rect.size.height > 50) {
-                            if (drawRect)
-                                drawRotatedRect(rect, rgba, detectColor)
+                        if (rect.size.height > signMatchSize /*&& (0.8 < rect.size.width / rect.size.height) && (rect.size.width / rect.size.height < 1.2)*/) {
+                            if (isDebug)
+                                rect.draw( rgba, detectColor)
 
-                            fixRotationRect(rect)
+                            rect.fixRotation()
                             //get rotation matrix from the rotated rectangle
                             val rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, rect.angle, 1.0)
                             matStack.add(rotationMatrix2D)
@@ -85,7 +83,7 @@ class CameraSightFragment : Fragment() {
                                     bestResult = best
                                 else if (best.rect.size.area() > bestResult!!.rect.size.area())
                                     bestResult = best
-                                if (drawError)
+                                if (isDebug)
                                     Imgproc.putText(rgba, best.sign.msg + ":" + best.error, bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, detectColor, 2)
                             }
                         }
@@ -93,14 +91,11 @@ class CameraSightFragment : Fragment() {
                     }
 
                     if (bestResult != null) {
-                        if (drawRect) {
-                            drawRotatedRect(bestResult!!.rect, rgba, selectColor)
-                            if(bestResult!!.rect.size.height>=signMatchSize){
-                                trigger(bestResult!!.sign.direction)
-                                Imgproc.putText(rgba, "Trigger", bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, selectColor, 2)
-                            }
-                        }
-                        if (drawThumbnail) {
+                        bestResult!!.rect.draw( rgba, selectColor)
+                        trigger(bestResult!!.sign.direction)
+                        Imgproc.putText(rgba, bestResult!!.sign.msg, bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, selectColor, 2)
+
+                        if (isDebug) {
                             val cropped = Mat()
                             matStack.add(cropped)
                             Imgproc.cvtColor(bestResult!!.thumbnail, cropped, Imgproc.COLOR_GRAY2RGBA)
@@ -109,138 +104,73 @@ class CameraSightFragment : Fragment() {
                     }
 
                 }
-                drawSignSize(rgba)
+                drawSignSizeIndicator(rgba)
                 return rgba
             }
 
         })
-        v.signSizeBar.max=v.cameraView.height
-        v.signSizeBar.progress=signMatchSize
-        v.signSizeBar.setOnSeekBarChangeListener(object :SeekBar.OnSeekBarChangeListener{
-            override fun onProgressChanged(p0: SeekBar?, progress: Int, isUser: Boolean) {
-                signMatchSize=progress
-            }
-
-            override fun onStartTrackingTouch(p0: SeekBar?) {
-
-            }
-
-            override fun onStopTrackingTouch(p0: SeekBar?) {
-                preferences.edit().putInt("sign_size",signMatchSize).apply()
-            }
-
-        })
+        v.signSizeBar.max = v.cameraView.height
+        v.signSizeBar.progress = signMatchSize
+        v.signSizeBar.setOnSeekBarChangeListener(
+                object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(p0: SeekBar?, progress: Int, isUser: Boolean) {
+                        signMatchSize = progress
+                    }
+                    override fun onStartTrackingTouch(p0: SeekBar?) {}
+                    override fun onStopTrackingTouch(p0: SeekBar?) {
+                        preferences.edit().putInt("sign_size", signMatchSize).apply()
+                    }
+                })
     }
 
     private fun trigger(direction: Int) {
         (activity as MainActivity).controller?.trigger(direction)
     }
 
-    private fun drawSignSize(rgba: Mat) {
-        Imgproc.line(rgba, Point(rgba.width().toDouble(), 10.0),Point(rgba.width().toDouble()-20, 10.0),selectColor,2)
-        Imgproc.line(rgba, Point(rgba.width().toDouble(), 10.0+signMatchSize),Point(rgba.width().toDouble()-20, 10.0+signMatchSize),selectColor,2)
+    private fun drawSignSizeIndicator(rgba: Mat) {
+        Imgproc.line(rgba, Point(rgba.width().toDouble(), 10.0), Point(rgba.width().toDouble() - 20, 10.0), selectColor, 2)
+        Imgproc.line(rgba, Point(rgba.width().toDouble(), 10.0 + signMatchSize), Point(rgba.width().toDouble() - 20, 10.0 + signMatchSize), selectColor, 2)
     }
 
     private fun getBestMatchSign(thumbnail: Mat, rect: RotatedRect): MatchSignResult? {
         var sign: TrafficSign? = null
-        var error = 100000000.0
+        var diff = 100000000.0
         for (s in signs) {
-            val e = getError(s.img, thumbnail)
-            if (e < error) {
+            val d = measureDifferenceBetween(s.img, thumbnail)
+            if (d < diff) {
                 sign = s
-                error = e
+                diff = d
             }
-            Log.d("Error", s.msg + " : " + e)
         }
-
-        Log.d("Error", "Best " + (sign?.msg))
-        if (sign != null && error < detectThreshold) {
-            return MatchSignResult(sign, error, thumbnail, rect)
-        }
-        return null
+        if (sign != null && diff < detectThreshold) {
+            return MatchSignResult(sign, diff, thumbnail, rect)
+        } else
+            return null
     }
 
     private fun getThumbnail(mask: Mat, rect: RotatedRect, rotationMatrix2D: Mat?): Mat {
         val rotatedMask = Mat()
+        matStack.add(rotatedMask)
         Imgproc.warpAffine(mask, rotatedMask, rotationMatrix2D, mask.size(), Imgproc.INTER_CUBIC)
         val cropped = Mat()
+        matStack.add(cropped)
         Imgproc.getRectSubPix(rotatedMask, rect.size, rect.center, cropped)
         Core.bitwise_not(cropped, cropped)
-        rotatedMask.release()
         return cropped
     }
 
-    val openCVInitCallback: LoaderCallbackInterface = object : LoaderCallbackInterface {
-        override fun onManagerConnected(status: Int) {
-            when (status) {
-                LoaderCallbackInterface.SUCCESS -> {
-                    Log.i("INIT", "OpenCV loaded successfully")
-                    initedOpenCV = true
-                    preloadImage()
-                    switchCamera()
-                }
-                else -> Log.w("INIT", "OpenCV loading failed")
-
-            }
-        }
-
-        override fun onPackageInstall(operation: Int, callback: InstallCallbackInterface?) {}
-
-    }
-
     private fun preloadImage() {
-        signs.add(TrafficSign("Turn right", activity, R.drawable.turnright,TrafficSign.RIGHT))
-        signs.add(TrafficSign("Turn left", activity, R.drawable.turnleft,TrafficSign.LEFT))
-        signs.add(TrafficSign("Turn back", activity, R.drawable.turnback,TrafficSign.BACK))
-        signs.add(TrafficSign("Move straight", activity, R.drawable.movestraight,TrafficSign.STRAIGHT))
+        signs.add(TrafficSign("Turn right", activity, R.drawable.turnright, TrafficSign.RIGHT))
+        signs.add(TrafficSign("Turn left", activity, R.drawable.turnleft, TrafficSign.LEFT))
+        signs.add(TrafficSign("Turn back", activity, R.drawable.turnback, TrafficSign.BACK))
+        signs.add(TrafficSign("Move straight", activity, R.drawable.movestraight, TrafficSign.STRAIGHT))
     }
 
-
-    override fun onResume() {
-        super.onResume()
-        reloadSetting()
-        Log.d("Camerasight", "Resume")
-        if (!OpenCVLoader.initDebug()) {
-            Log.d("INIT", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, activity, openCVInitCallback);
-        } else {
-            Log.d("INIT", "OpenCV library found inside package. Using it!");
-            openCVInitCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
-        }
-    }
-
-    private fun reloadSetting() {
-
-        drawRect = preferences.getBoolean("is_draw_rectangles", true)
-        drawContours = preferences.getBoolean("is_draw_contours", true)
-        drawError = preferences.getBoolean("is_draw_error", true)
-        drawThumbnail = preferences.getBoolean("is_draw_thumbnail", true)
-        isStreaming = preferences.getBoolean("is_streaming", false)
-        detectThreshold = preferences.getString("detect_threshold", "1.5").toDouble()
-        cameraSize = preferences.getString("camera_size", "Fullsize")
-        signMatchSize = preferences.getInt("sign_size", 100)
-        if (view != null){
-            view?.signSizeBar?.max = view?.cameraView?.height!!
-            view?.signSizeBar?.progress=signMatchSize
-        }
-    }
-
-    //fix the rotated angle
-    private fun fixRotationRect(rect: RotatedRect) {
-        if (rect.angle < -45.0) {
-            rect.angle += 90.0
-            val tmp = rect.size.width //swap width and height
-            rect.size.width = rect.size.height
-            rect.size.height = tmp
-        }
-    }
-
-    fun getError(A: Mat, B: Mat): Double {
+    //measure difference between two same-size images, lower difference is better
+    private fun measureDifferenceBetween(A: Mat, B: Mat): Double {
         if (A.rows() > 0 && A.rows() == B.rows() && A.cols() > 0 && A.cols() == B.cols()) {
-            // Calculate the L2 relative error between images.
-            val errorL2 = Core.norm(A, B, Core.NORM_L2);
-            // Convert to a reasonable scale, since L2 error is summed across all pixels of the image.
-            val error = errorL2 / (A.rows() * A.cols());
+            val errorL2 = Core.norm(A, B, Core.NORM_L2) // Calculate the L2 relative error between images.
+            val error = errorL2 / (A.rows() * A.cols()) // Convert to a reasonable scale, since L2 error is summed across all pixels of the image.
             return error;
         } else {
             //Images have a different size
@@ -248,6 +178,7 @@ class CameraSightFragment : Fragment() {
         }
     }
 
+    //resize image to new size w*h
     private fun resizeMat(mat: Mat, w: Int, h: Int): Mat {
         val result = Mat()
         matStack.add(result)
@@ -255,7 +186,7 @@ class CameraSightFragment : Fragment() {
         return result
     }
 
-
+    //get a minimal rectangle that wraps the contour
     private fun getMinAreaRect(contour: MatOfPoint): RotatedRect {
         val matOfPoint2f = MatOfPoint2f()
         contour.convertTo(matOfPoint2f, CvType.CV_32F)
@@ -286,14 +217,6 @@ class CameraSightFragment : Fragment() {
         return mask
     }
 
-    private fun drawRotatedRect(rRect: RotatedRect, mat: Mat, color: Scalar) {
-        val vertices = arrayOfNulls<Point>(4)
-        rRect.points(vertices)
-        for (j in 0..3) {
-            Imgproc.line(mat, vertices[j], vertices[(j + 1) % 4], color)
-        }
-    }
-
 
     private fun switchCamera() {
         if (initedOpenCV) //must be sure that openCV has been initialized before enabling Camera
@@ -321,7 +244,32 @@ class CameraSightFragment : Fragment() {
 
     fun switchCam(enable: Boolean) {
         enableCamera = enable
-        Log.d("switchcam", "called with " + enable)
         switchCamera()
     }
+
+    override fun onResume() {
+        super.onResume()
+        reloadSetting()
+        if (OpenCVLoader.initDebug()) {
+            Log.d("INIT", "OpenCV library found inside package. Using it!");
+            initedOpenCV = true
+            preloadImage()
+            switchCamera()
+        } else {
+            activity.toast("OpenCV is not found!!")
+            activity.finish()
+        }
+    }
+
+    private fun reloadSetting() {
+        isDebug = preferences.getBoolean("is_debug", true)
+        detectThreshold = preferences.getString("detect_threshold", "1.5").toDouble()
+        cameraSize = preferences.getString("camera_size", "Fullsize")
+        signMatchSize = preferences.getInt("sign_size", 100)
+        if (view != null) {
+            view?.signSizeBar?.max = view?.cameraView?.height!!
+            view?.signSizeBar?.progress = signMatchSize
+        }
+    }
 }
+

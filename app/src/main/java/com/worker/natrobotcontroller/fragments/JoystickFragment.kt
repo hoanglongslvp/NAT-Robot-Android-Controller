@@ -7,73 +7,87 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
 import android.widget.SeekBar
-import android.widget.TextView
 import com.worker.natrobotcontroller.R
 import com.worker.natrobotcontroller.activities.MainActivity
 import kotlinx.android.synthetic.main.controller.view.*
-import kotlinx.android.synthetic.main.joystick.view.*
+import org.jetbrains.anko.activityUiThread
 import org.jetbrains.anko.doAsync
+import org.jetbrains.anko.toast
 import java.io.IOException
 
 /**
  * Created by hataketsu on 11/12/17.
  */
 class JoystickFragment : Fragment() {
-    var mode = "Joystick"
-    var speed = 255
-    var lastCommand = ""
-    var connect_status: TextView? = null
-
+    var mode = ""
+    var speed = 200
     var frontDistance = 0
     var backDistance = 0
     var currentAngle = 0
     var desiredAngle = 0
-    var connect: ConnectFragment? = null
+    lateinit var connect: ConnectFragment
+    val preferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(context)
+    }
+    var reading = true
+
     override fun onCreateView(inflater: LayoutInflater?, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val connect = (activity as MainActivity).connect
-        this.connect = connect
-        val v: View?
-        if (mode == "Joystick") {
-            v = inflater?.inflate(R.layout.joystick, container, false)
-            v!!.joystickR.setOnMoveListener({ angle, strength ->
-                val pwm = strength * 255 / 100
-                val cmd = "_${angle - 90};s$pwm;"
-                sendCommand(connect, cmd)
-            }, 200)
-            v.reset_gyro.setOnClickListener {
-                sendCommand(connect,"g20;")
+        val _connect = (activity as MainActivity).connect
+        this.connect = _connect!!
+
+        val v = inflater?.inflate(R.layout.controller, container, false)
+        v!!.fowardBtn.setOnClickListener { sendCommand(connect, "_0;s$speed;") }
+        v.backBtn.setOnClickListener { sendCommand(connect, "_180;s$speed;") }
+        v.leftBtn.setOnClickListener { sendCommand(connect, "_90;s$speed;") }
+        v.rightBtn.setOnClickListener { sendCommand(connect, "_-90;s$speed;") }
+        v.stopBtn.setOnClickListener { sendCommand(connect, "p10;") }
+        v.speedBar.progress = speed
+        v.speedBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(p0: SeekBar?, progress: Int, fromUser: Boolean) {
+                speed = progress
+                sendCommand(connect, "s$speed;")
             }
-            connect_status = v.connect_status
 
-        } else {
-            v = inflater?.inflate(R.layout.controller, container, false)
-            v!!.fowardBtn.setOnClickListener { sendCommand(connect, format("_0;")) }
-            v.backBtn.setOnClickListener { sendCommand(connect, format("_180;")) }
-            v.leftBtn.setOnClickListener { sendCommand(connect, format("_90;")) }
-            v.rightBtn.setOnClickListener { sendCommand(connect, format("_-90;")) }
-            v.stopBtn.setOnClickListener { sendCommand(connect, format("p10;")) }
-            v.speedBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(p0: SeekBar?, progress: Int, fromUser: Boolean) {
-                    speed = progress
-                    sendCommand(connect, "s$speed;")
-                }
+            override fun onStartTrackingTouch(p0: SeekBar?) {}
 
-                override fun onStartTrackingTouch(p0: SeekBar?) {
-                }
+            override fun onStopTrackingTouch(p0: SeekBar?) {}
 
-                override fun onStopTrackingTouch(p0: SeekBar?) {
-                }
-
-            })
-            connect_status = v.connect_statusc
+        })
+        v.joystickR.setOnMoveListener({ angle, strength ->
+            val pwm = strength * 255 / 100
+            val cmd = "_${angle - 90};s$pwm;"
+            sendCommand(connect, cmd)
+        }, 200)
+        v.reset_gyro.setOnClickListener {
+            sendCommand(connect, "g20;")
         }
+
+
+        v.controller_mode.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(p0: AdapterView<*>?) {}
+
+            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
+                val mode = v.controller_mode.selectedItem.toString()
+                activity.toast(mode)
+                selectMode(mode)
+                preferences.edit().putString("control_mode", mode).apply()
+            }
+
+        }
+        selectMode(mode)
+
+        return v
+    }
+
+    private fun startReading() {
         activity.doAsync {
-            while (true) {
+            while (reading) {
                 try {
-                    if (connect?.socket?.inputStream != null) {
+                    if (connect.socket?.inputStream != null) {
                         if (connect.socket?.isConnected!!) {
-                            val line = connect.socket?.inputStream?.bufferedReader()?.readLine()?.trim()
+                            val line=connect.socket?.inputStream?.bufferedReader()?.readLine()?.trim()
                             Log.d("BLUETOOTHx", "read" + line)
                             if (!line.isNullOrEmpty()) {
                                 line!!.split(";").forEach { cmd ->
@@ -88,62 +102,82 @@ class JoystickFragment : Fragment() {
 
                             }
                             activity.runOnUiThread {
-                                connect_status?.setText("Current : $currentAngle cm")
+                                view?.car_info?.setText("Front: $frontDistance cm\n" +
+                                        "Back: $backDistance\n" +
+                                        "Current angle: $currentAngle\n" +
+                                        "Desired angle: $desiredAngle")
                             }
                         }
-                    } else Thread.sleep(1000)
+                    } else
+                        try {
+                            Thread.sleep(1000)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    activityUiThread {
+                        view?.car_info?.setText(e.message)
+                    }
                 }
             }
         }
-        return v
+    }
+
+    private fun selectMode(mode: String) {
+        when (mode) {
+            "Joystick" -> {
+                view?.keyboard_layout?.visibility = View.INVISIBLE
+                view?.joystickR?.visibility = View.VISIBLE
+            }
+            "Game pad" -> {
+                view?.keyboard_layout?.visibility = View.VISIBLE
+                view?.joystickR?.visibility = View.INVISIBLE
+            }
+        }
     }
 
     private fun readNumber(s: String): Int {
         return s.substring(1, s.length).toInt()
     }
 
-    private fun format(s: String): String {
-        lastCommand = s
-        return s.format(speed, speed)
-    }
-
     override fun onResume() {
         super.onResume()
         reloadSetting()
+        reading = true
+        startReading()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        reading = false
     }
 
     private fun reloadSetting() {
-        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-        val _mode = preferences.getString("control_mode", "Joystick")
-        if (mode != _mode) {
-            mode = _mode
-            fragmentManager.beginTransaction().detach(this).attach(this).commit()
-        }
+        mode = preferences.getString("control_mode", "Joystick")
     }
 
     private fun sendCommand(connect: ConnectFragment?, command: String) {
         connect?.log("Try to send $command")
         if (connect?.socket == null) {
-            connect_status?.setText("Not connected")
+            view?.car_info?.setText("Not connected")
         } else
             try {
                 connect.socket?.outputStream?.write(command.toByteArray())
             } catch (e: IOException) {
                 e.printStackTrace()
-                connect_status?.setText("Not connected")
+                view?.car_info?.setText("Not connected")
             }
     }
 
     private fun slimSendCommand(connect: ConnectFragment?, command: String) {
         connect?.log("Try to send $command")
         if (connect?.socket != null)
-                try {
-                    connect.socket?.outputStream?.write(command.toByteArray())
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                }
+            try {
+                connect.socket?.outputStream?.write(command.toByteArray())
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
     }
 
     fun trigger(direction: Int) {

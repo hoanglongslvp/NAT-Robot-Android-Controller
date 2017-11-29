@@ -16,7 +16,6 @@ import android.view.ViewGroup
 import com.worker.natrobotcontroller.R
 import kotlinx.android.synthetic.main.connect.view.*
 import org.jetbrains.anko.indeterminateProgressDialog
-import org.jetbrains.anko.progressDialog
 import org.jetbrains.anko.runOnUiThread
 import org.jetbrains.anko.selector
 import java.io.IOException
@@ -52,7 +51,6 @@ class ConnectFragment : Fragment() {
             blue.bondedDevices.forEach { devices.add(it) }
             getConnect()
         }
-
     }
 
     override fun onResume() {
@@ -87,26 +85,6 @@ class ConnectFragment : Fragment() {
     private val mBroadcast = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
-
-                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
-                    val mDevice = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                    when (mDevice.bondState) {
-                        BluetoothDevice.BOND_BONDED -> {
-                            device = mDevice
-                            isBoned = true
-                            log("Boned to device ${device?.name} at address :${device?.address}")
-                        }
-                        BluetoothDevice.BOND_BONDING -> {
-                            isBoned = false
-                            log("Boning to device ${device?.name} at address :${device?.address}")
-                        }
-                        BluetoothDevice.BOND_NONE -> {
-                            isBoned = false
-                            socket=null
-                            log("Broke boning to device ${device?.name} at address :${device?.address}")
-                        }
-                    }
-                }
 
                 BluetoothAdapter.ACTION_STATE_CHANGED -> {
                     val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
@@ -154,9 +132,7 @@ class ConnectFragment : Fragment() {
 
     private fun startConnecting() {
         activity.run {
-            val dialog = progressDialog("Connecting, please wait...", "Bluetooth")
             try {
-                runOnUiThread { dialog.show() }
                 socket = device?.createInsecureRfcommSocketToServiceRecord(myUUID)
                 log("Try to connect to socket")
                 socket?.connect()
@@ -164,10 +140,7 @@ class ConnectFragment : Fragment() {
             } catch (e: IOException) {
                 e.printStackTrace()
                 log("Connect to socket fail : " + e.message)
-
                 socket = null
-            } finally {
-                dialog.dismiss()
             }
         }
     }

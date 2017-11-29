@@ -3,7 +3,6 @@ package com.worker.natrobotcontroller.activities
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.support.design.widget.BottomNavigationView
 import android.support.v4.app.Fragment
 import android.support.v4.app.FragmentPagerAdapter
@@ -101,10 +100,6 @@ class MainActivity : AppCompatActivity() {
                 .ask(134) //134 is just a random number
     }
 
-    override fun onResume() {
-        super.onResume()
-        val preferences = PreferenceManager.getDefaultSharedPreferences(this)
-    }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.setting_action -> startActivity(Intent(this, SettingActivity::class.java))

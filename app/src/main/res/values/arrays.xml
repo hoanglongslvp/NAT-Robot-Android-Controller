@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="controllers">
+    <string-array name="controller_modes">
         <item>Game pad</item>
         <item>Joystick</item>
     </string-array>
