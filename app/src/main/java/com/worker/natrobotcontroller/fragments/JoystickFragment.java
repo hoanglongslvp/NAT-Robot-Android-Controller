@@ -23,10 +23,8 @@ import com.worker.natrobotcontroller.R.id;
 import com.worker.natrobotcontroller.activities.MainActivity;
 
 import org.jetbrains.anko.ToastsKt;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 
 import io.github.controlwear.virtual.joystick.android.JoystickView;
@@ -34,22 +32,22 @@ import io.github.controlwear.virtual.joystick.android.JoystickView.OnMoveListene
 import kotlin.text.Charsets;
 
 public final class JoystickFragment extends Fragment {
-    @NotNull
+
     public String mode = "";
     public int speed = 200;
     public int frontDistance;
     public int backDistance;
     public int currentAngle;
     public int desiredAngle;
-    @NotNull
     public ConnectFragment connect;
     public boolean reading = true;
+    TextView info;
     private SharedPreferences preferences;
-
 
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         this.connect = ((MainActivity) getActivity()).connect;
         final View v = inflater.inflate(R.layout.controller, container, false);
+        info = v.findViewById(id.car_info);
         v.findViewById(id.fowardBtn).setOnClickListener(new OnClickListener() {
             public final void onClick(View it) {
                 sendCommand(connect, "_0;s" + speed + ';');
@@ -95,7 +93,7 @@ public final class JoystickFragment extends Fragment {
                 sendCommand(connect, cmd);
             }
         }, 200);
-        v.findViewById(id.reset_gyro).setOnClickListener(new OnClickListener() {
+        v.findViewById(id.reset_gyro).setOnClickListener(new View.OnClickListener() {
             public final void onClick(View it) {
                 sendCommand(connect, "g20;");
             }
@@ -159,12 +157,10 @@ public final class JoystickFragment extends Fragment {
     }
 
     public final void sendCommand(ConnectFragment connect, String command) {
-        if (connect != null) {
-            connect.log("Try to send " + command);
-        }
         try {
-            connect.getSocket().getOutputStream().write(command.getBytes(Charsets.UTF_8));
-        } catch (IOException e) {
+            connect.log("Try to send " + command);
+            connect.socket.getOutputStream().write(command.getBytes(Charsets.UTF_8));
+        } catch (Exception e) {
             e.printStackTrace();
             this.getView().<TextView>findViewById(id.car_info).setText("Not connected");
         }
@@ -172,12 +168,10 @@ public final class JoystickFragment extends Fragment {
     }
 
     public final void slimSendCommand(ConnectFragment connect, String command) {
-        if (connect != null) {
-            connect.log("Try to send " + command);
-        }
         try {
-            connect.getSocket().getOutputStream().write(command.getBytes(Charsets.UTF_8));
-        } catch (IOException e) {
+            connect.log("Try to send " + command);
+            connect.socket.getOutputStream().write(command.getBytes(Charsets.UTF_8));
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -187,12 +181,13 @@ public final class JoystickFragment extends Fragment {
         if (direction == -1) {
             this.slimSendCommand(this.connect, "p10;");
         } else {
-            int tmp;
-            for (tmp = this.currentAngle + direction * 90; tmp < 0; tmp += 360) ;
+            int tmp = this.currentAngle + direction * 90;
+            while (tmp < 0) {
+                tmp += 360;
+            }
             while (tmp > 360) {
                 tmp -= 360;
             }
-
             if (tmp < 45) {
                 tmp = 0;
             } else if (tmp < 135) {
@@ -214,13 +209,11 @@ public final class JoystickFragment extends Fragment {
     }
 
     class ReadingTask extends AsyncTask<Void, Void, Void> {
-
-
         @Override
         protected Void doInBackground(Void... voids) {
             while (reading) {
                 try {
-                    String line = new BufferedReader(new InputStreamReader(connect.getSocket().getInputStream())).readLine().trim();
+                    String line = new BufferedReader(new InputStreamReader(connect.socket.getInputStream())).readLine().trim();
                     Log.d("BLUETOOTHx", "read" + line);
                     if (!line.isEmpty()) {
                         for (String cmd : line.split(";")) {
@@ -245,16 +238,18 @@ public final class JoystickFragment extends Fragment {
                     }
                     getActivity().runOnUiThread(new Runnable() {
                         public final void run() {
-                            ((TextView) getView().findViewById(id.car_info)).setText((CharSequence) ("Front: " + frontDistance + " cm\n" + "Back: " + backDistance + '\n' + "Current angle: " + currentAngle + '\n' + "Desired angle: " + desiredAngle));
+                            info.setText(String.format("Front: %d cm\nBack: %d\nCurrent angle: %d\nDesired angle: %d", frontDistance, backDistance, currentAngle, desiredAngle));
                         }
                     });
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e1) {
-                        e1.printStackTrace();
-                    }
+                    if (e instanceof NullPointerException)
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e1) {
+                            e1.printStackTrace();
+                        }
+                    else
+                        e.printStackTrace();
                 }
             }
             return null;

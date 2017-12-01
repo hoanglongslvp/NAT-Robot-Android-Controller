@@ -43,26 +43,20 @@ public final class MainActivity extends AppCompatActivity {
             MainActivity.this.setTitle(item.getTitle());
             switch (item.getItemId()) {
                 case R.id.navigation_connect:
-                    ((NoSwipeViewPager) findViewById(id.main_pager)).setCurrentItem(1);
-                    return true;
-                case R.id.navigation_camera:
                     ((NoSwipeViewPager) findViewById(id.main_pager)).setCurrentItem(0);
                     return true;
-
+                case R.id.navigation_camera:
+                    ((NoSwipeViewPager) findViewById(id.main_pager)).setCurrentItem(1);
+                    return true;
                 case R.id.navigation_joystick:
                     ((NoSwipeViewPager) findViewById(id.main_pager)).setCurrentItem(2);
                     return true;
             }
             Log.d("Navigation", "nav called " + ((NoSwipeViewPager) findViewById(id.main_pager)).getCurrentItem());
-            CameraSightFragment var10000 = MainActivity.this.camera;
-            if (var10000 != null) {
-                var10000.switchCam(((NoSwipeViewPager) findViewById(id.main_pager)).getCurrentItem() == 1);
-            }
-
+            camera.switchCam(((NoSwipeViewPager) findViewById(id.main_pager)).getCurrentItem() == 1);
             return false;
         }
     });
-    private NoSwipeViewPager viewPager;
 
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,10 +66,10 @@ public final class MainActivity extends AppCompatActivity {
         this.camera = new CameraSightFragment();
         this.connect = new ConnectFragment();
         this.controller = new JoystickFragment();
-        ((NoSwipeViewPager) findViewById(id.main_pager)).setAdapter(new FragmentPagerAdapter(this.getSupportFragmentManager()) {
+        NoSwipeViewPager viewPager = findViewById(id.main_pager);
+        viewPager.setAdapter(new FragmentPagerAdapter(this.getSupportFragmentManager()) {
             @NotNull
             private final List fragments = new ArrayList();
-
             {
                 fragments.add(MainActivity.this.connect);
                 fragments.add(MainActivity.this.camera);
@@ -92,7 +86,7 @@ public final class MainActivity extends AppCompatActivity {
             }
         });
 
-        viewPager = findViewById(id.main_pager);
+
         viewPager.addOnPageChangeListener(new OnPageChangeListener() {
             @Nullable
             private MenuItem prev;
