@@ -47,7 +47,7 @@ const int ROTATING_LEFT = 134;
 const int ROTATING_RIGHT = 135;
 int rotatingMode = ROTATING_LEFT;
 
-const int MIN_DISTANCE = 10;
+const int MIN_DISTANCE = 20;
 const int BLUETOOTH_RX = A2;
 const int BLUETOOTH_TX = A3;
 int count = 0;
@@ -116,7 +116,7 @@ void dispDistance(int row) {
 	lcd.print(getDistance(BACK_TRIGGER, BACK_ECHO));
 	if (millis() < pauseCounter) {
 		lcd.print(" P:");
-		lcd.print(pauseCounter-millis());
+		lcd.print(pauseCounter - millis());
 	}
 }
 
@@ -156,9 +156,11 @@ void dispSpeed(int row) {
 void dispAngle(int row) {
 	lcd.setCursor(0, row);
 	lcd.print("C:");
-	lcd.print(currentAngle);
+	lcd.print((int) currentAngle);
 	lcd.print(" R:");
 	lcd.print((int) remainingAngle);
+	lcd.print(" M:");
+	lcd.print(maxSpeed);
 	lcd.print("   ");
 }
 
@@ -365,7 +367,7 @@ void unPause() {
 	setLeftSpeed(oldLeftSpeed);
 	setRightSpeed(oldRightSpeed);
 	pauseCounter = 0;
-	isStopping=false;
+	isStopping = false;
 }
 
 void processSonic() {
@@ -390,10 +392,11 @@ void processPause() {
 
 void main_loop() {
 	if (count++ > 10) {
-		dispSpeed(0);
-//		dispAngle(1);
-//		dispBattery(1);
-		dispDistance(1);
+
+//		dispSpeed(0);
+		dispAngle(1);
+		dispBattery(0);
+//		dispDistance(1);
 		processPause();
 		count = 0;
 	}
