@@ -14,8 +14,8 @@ import com.worker.natrobotcontroller.R
 import com.worker.natrobotcontroller.activities.MainActivity
 import com.worker.natrobotcontroller.models.MatchSignResult
 import com.worker.natrobotcontroller.models.TrafficSign
-import com.worker.natrobotcontroller.util.draw
-import com.worker.natrobotcontroller.util.fixRotation
+import com.worker.natrobotcontroller.util.MatUtil
+import com.worker.natrobotcontroller.util.MatUtil.draw
 import kotlinx.android.synthetic.main.camera_sight.view.*
 import org.jetbrains.anko.toast
 import org.opencv.android.CameraBridgeViewBase
@@ -69,9 +69,9 @@ class CameraSightFragment : Fragment() {
                         val rect = getMinAreaRect(contour)
                         if (rect.size.height > signMatchSize /*&& (0.8 < rect.size.width / rect.size.height) && (rect.size.width / rect.size.height < 1.2)*/) {
                             if (isDebug)
-                                rect.draw( rgba, detectColor)
+                                MatUtil.draw( rect,rgba, detectColor)
 
-                            rect.fixRotation()
+                            MatUtil.fixRotation(rect)
                             //get rotation matrix from the rotated rectangle
                             val rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, rect.angle, 1.0)
                             matStack.add(rotationMatrix2D)
@@ -91,7 +91,7 @@ class CameraSightFragment : Fragment() {
                     }
 
                     if (bestResult != null) {
-                        bestResult!!.rect.draw( rgba, selectColor)
+                        draw(bestResult!!.rect, rgba, selectColor)
                         trigger(bestResult!!.sign.direction)
                         Imgproc.putText(rgba, bestResult!!.sign.msg, bestResult!!.rect.center, Core.FONT_HERSHEY_SIMPLEX, 0.65, selectColor, 2)
 
@@ -164,6 +164,7 @@ class CameraSightFragment : Fragment() {
         signs.add(TrafficSign("Turn left", activity, R.drawable.turnleft, TrafficSign.LEFT))
         signs.add(TrafficSign("Turn back", activity, R.drawable.turnback, TrafficSign.BACK))
         signs.add(TrafficSign("Move straight", activity, R.drawable.movestraight, TrafficSign.STRAIGHT))
+        signs.add(TrafficSign("Stop", activity, R.drawable.stopx, TrafficSign.STOP))
     }
 
     //measure difference between two same-size images, lower difference is better
