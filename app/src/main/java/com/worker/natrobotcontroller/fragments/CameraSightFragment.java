@@ -25,6 +25,7 @@ import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.JavaCameraView;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
@@ -185,7 +186,7 @@ public class CameraSightFragment extends Fragment {
     private Mat getThumbnail(Mat mask, RotatedRect rect, Mat rotationMatrix2D) {
         Mat rotatedMask = new Mat();
         this.matStack.add(rotatedMask);
-        Imgproc.warpAffine(mask, rotatedMask, rotationMatrix2D, mask.size(), 2);
+        Imgproc.warpAffine(mask, rotatedMask, rotationMatrix2D, mask.size(), Imgproc.INTER_CUBIC);
         Mat cropped = new Mat();
         this.matStack.add(cropped);
         Imgproc.getRectSubPix(rotatedMask, rect.size, rect.center, cropped);
@@ -194,16 +195,16 @@ public class CameraSightFragment extends Fragment {
     }
 
     private void preloadImage() {
-        this.signs.add(new TrafficSign("Turn right", this.getActivity(), 2131230847, 3));
-        this.signs.add(new TrafficSign("Turn left", this.getActivity(), 2131230846, 1));
-        this.signs.add(new TrafficSign("Turn back", this.getActivity(), 2131230845, 2));
-        this.signs.add(new TrafficSign("Move straight", this.getActivity(), 2131230828, 0));
-        this.signs.add(new TrafficSign("Stop", this.getActivity(), 2131230842, -1));
+        signs.add(new TrafficSign("Turn right", getActivity(), R.drawable.turnright, TrafficSign.RIGHT));
+        signs.add(new TrafficSign("Turn left", getActivity(), R.drawable.turnleft, TrafficSign.LEFT));
+        signs.add(new TrafficSign("Turn back", getActivity(), R.drawable.turnback, TrafficSign.BACK));
+        signs.add(new TrafficSign("Move straight", getActivity(), R.drawable.movestraight, TrafficSign.STRAIGHT));
+        signs.add(new TrafficSign("Stop", getActivity(), R.drawable.stopx, TrafficSign.STOP));
     }
 
     private double measureDifferenceBetween(Mat A, Mat B) {
         if (A.rows() > 0 && A.rows() == B.rows() && A.cols() > 0 && A.cols() == B.cols()) {
-            double errorL2 = Core.norm(A, B, 4);
+            double errorL2 = Core.norm(A, B, Core.NORM_L2);
             double error = errorL2 / (double) (A.rows() * A.cols());
             return error;
         } else {
@@ -220,7 +221,7 @@ public class CameraSightFragment extends Fragment {
 
     private RotatedRect getMinAreaRect(MatOfPoint contour) {
         MatOfPoint2f matOfPoint2f = new MatOfPoint2f();
-        contour.convertTo(matOfPoint2f, 5);
+        contour.convertTo(matOfPoint2f, CvType.CV_32F);
         RotatedRect result = Imgproc.minAreaRect(matOfPoint2f);
         matOfPoint2f.release();
         return result;
@@ -230,14 +231,14 @@ public class CameraSightFragment extends Fragment {
         ArrayList<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
         this.matStack.add(hierarchy);
-        Imgproc.findContours(mask, contours, hierarchy, 3, 2, new Point(0.0D, 0.0D));
+        Imgproc.findContours(mask, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE, new Point(0.0D, 0.0D));
         return contours;
     }
 
     private Mat getColorMask(Mat rgba) {
         Mat hsv = new Mat();
         this.matStack.add(hsv);
-        Imgproc.cvtColor(rgba, hsv, 41, 3);
+        Imgproc.cvtColor(rgba, hsv, Imgproc.COLOR_RGB2HSV, 3);
         Mat mask = new Mat();
         this.matStack.add(mask);
         Scalar lower_color = new Scalar(80.0D, 100.0D, 70.0D);
@@ -259,23 +260,23 @@ public class CameraSightFragment extends Fragment {
 
         switch (cameraSize) {
             case "Medium":
-                this.setSize(0, 8, 0, 8);
+                this.setSize(View.INVISIBLE, View.VISIBLE, View.INVISIBLE, View.VISIBLE);
                 break;
             case "Small":
-                this.setSize(0, 0, 0, 0);
+                this.setSize(View.INVISIBLE, View.INVISIBLE, View.INVISIBLE, View.INVISIBLE);
                 break;
             case "Fullsize":
-                this.setSize(8, 8, 8, 8);
+                this.setSize(View.VISIBLE, View.VISIBLE, View.VISIBLE, View.VISIBLE);
         }
 
     }
 
-    private void setSize(int f, int s, int t, int l) {
+    private void setSize(int first, int second, int third, int last) {
         if (this.getView() != null) {
-            this.getView().findViewById(id.first).setVisibility(f);
-            this.getView().findViewById(id.second).setVisibility(s);
-            this.getView().findViewById(id.third).setVisibility(t);
-            this.getView().findViewById(id.last).setVisibility(l);
+            this.getView().findViewById(id.first).setVisibility(first);
+            this.getView().findViewById(id.second).setVisibility(second);
+            this.getView().findViewById(id.third).setVisibility(third);
+            this.getView().findViewById(id.last).setVisibility(last);
         }
 
     }

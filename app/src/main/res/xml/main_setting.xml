@@ -14,7 +14,7 @@
             android:title="Show some debug information" />
         <EditTextPreference
             android:defaultValue="1.5"
-            android:inputType="number"
+            android:inputType="text"
             android:key="detect_threshold"
             android:selectAllOnFocus="true"
             android:singleLine="true"
