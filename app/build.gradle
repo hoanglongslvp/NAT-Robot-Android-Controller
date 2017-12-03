@@ -20,9 +20,29 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        debug{
+            ext.enableCrashlytics = false
+        }
     }
     buildToolsVersion '26.0.2'
 }
+apply plugin: 'io.fabric'
+
+
+repositories {
+    mavenCentral()
+    maven { url 'https://maven.fabric.io/public' }
+}
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url 'https://maven.fabric.io/public' }
+    }
+    dependencies {
+        classpath 'io.fabric.tools:gradle:1.+'
+    }
+}
+
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
@@ -41,4 +61,7 @@ dependencies {
     compile "org.jetbrains.anko:anko-commons:0.10.1"
     compile "org.jetbrains.anko:anko-design:0.10.1"
     compile 'io.github.controlwear:virtualjoystick:1.7.1'
+    compile('com.crashlytics.sdk.android:crashlytics:2.5.5@aar') {
+        transitive = true;
+    }
 }

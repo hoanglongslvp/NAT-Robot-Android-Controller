@@ -10,24 +10,22 @@ import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
 public final class MatUtil {
-    public static void draw(@NotNull RotatedRect $receiver, @NotNull Mat mat, @NotNull Scalar color) {
+    public static void draw(@NotNull RotatedRect rect, @NotNull Mat mat, @NotNull Scalar color) {
         Point[] vertices = new Point[4];
-        $receiver.points(vertices);
+        rect.points(vertices);
         int j = 0;
-
         for(byte var5 = 4; j < var5; ++j) {
             Imgproc.line(mat, vertices[j], vertices[(j + 1) % 4], color);
         }
 
     }
 
-    public static void fixRotation(@NotNull RotatedRect $receiver) {
-        if($receiver.angle < -45.0D) {
-            $receiver.angle += 90.0D;
-            double tmp = $receiver.size.width;
-            $receiver.size.width = $receiver.size.height;
-            $receiver.size.height = tmp;
+    public static void fixRotation(@NotNull RotatedRect rect) {
+        if(rect.angle < -45.0D) {
+            rect.angle += 90.0D;
+            double tmp = rect.size.width;
+            rect.size.width = rect.size.height;
+            rect.size.height = tmp;
         }
-
     }
 }

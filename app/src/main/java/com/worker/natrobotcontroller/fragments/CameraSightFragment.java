@@ -40,16 +40,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CameraSightFragment extends Fragment {
+    public static final int MIN_SIZE = 1;
+    public static final int BAD_NUMBER = 100000000;
+    public static final double INDICATOR_LENGHT = 10;
     private boolean enableCamera;
     private boolean initedOpenCV;
     private boolean isDebug;
-
     private String cameraSize = "Fullsize";
     private double detectThreshold = 1.5D;
-
-    private Scalar detectColor = new Scalar(25.0D, 118.0D, 210.0D);
-
-    private Scalar selectColor = new Scalar(255.0D, 64.0D, 129.0D);
+    private Scalar LIGHT_BLUE = new Scalar(25.0D, 118.0D, 210);
+    private Scalar RED = new Scalar(255.0D, 64.0D, 129.0D);
 
     private List<Mat> matStack = new ArrayList<>();
 
@@ -58,7 +58,14 @@ public class CameraSightFragment extends Fragment {
     private MatchSignResult bestResult;
     private int signMatchSize;
     private SharedPreferences preferences;
-
+    private JavaCameraView cameraView;
+    private JoystickFragment controller;
+    private VerticalSeekBar signSeekBar;
+    private View firstBlankColumn;
+    private View secondBlankColumn;
+    private View thirdBlankColumn;
+    private View lastBlankColumn;
+    private float cameraScaledRatio = 1;
 
     public SharedPreferences getPreferences() {
         if (preferences == null)
@@ -68,18 +75,20 @@ public class CameraSightFragment extends Fragment {
 
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.camera_sight, container, false);
+        controller = ((MainActivity) this.getActivity()).controller;
         this.setupView(v);
         return v;
     }
 
     private void setupView(View v) {
-        ((JavaCameraView) v.findViewById(id.cameraView)).setCvCameraViewListener(new CvCameraViewListener2() {
+        cameraView = v.findViewById(id.cameraView);
+        cameraView.setCvCameraViewListener(new CvCameraViewListener2() {
             public void onCameraViewStarted(int width, int height) {
+                cameraScaledRatio=(16f/9)/(1f*width/height);
             }
 
             public void onCameraViewStopped() {
             }
-
 
             public Mat onCameraFrame(CvCameraViewFrame frame) {
                 for (Mat m : matStack) {
@@ -93,16 +102,16 @@ public class CameraSightFragment extends Fragment {
                 bestResult = null;
                 if (contours.size() > 0) {
                     if (isDebug) {
-                        Imgproc.drawContours(rgba, contours, -1, detectColor);
+                        Imgproc.drawContours(rgba, contours, -1, LIGHT_BLUE);
                     }
 
                     for (MatOfPoint contour : contours) {
                         RotatedRect rect = getMinAreaRect(contour);
-                        if (rect.size.height > (double) signMatchSize) {
-                            if (isDebug) {
-                                MatUtil.draw(rect, rgba, detectColor);
-                            }
+                        if ((rect.size.height > (double) signMatchSize) && isPrettySquare(rect.size)) {
 
+                            if (isDebug) {
+                                MatUtil.draw(rect, rgba, LIGHT_BLUE);
+                            }
                             MatUtil.fixRotation(rect);
                             Mat rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, rect.angle, 1.0D);
                             matStack.add(rotationMatrix2D);
@@ -118,7 +127,7 @@ public class CameraSightFragment extends Fragment {
                                 }
 
                                 if (isDebug) {
-                                    Imgproc.putText(rgba, best.getSign().msg + ":" + best.getError(), bestResult.getRect().center, 0, 0.65D, detectColor, 2);
+                                    Imgproc.putText(rgba, best.getSign().msg + ":" + best.getError(), bestResult.getRect().center, 0, 0.65D, LIGHT_BLUE, 2);
                                 }
                             }
                         }
@@ -126,14 +135,16 @@ public class CameraSightFragment extends Fragment {
                     }
 
                     if (bestResult != null) {
-                        MatUtil.draw(bestResult.getRect(), rgba, selectColor);
-                        trigger(bestResult.getSign().direction);
-                        Imgproc.putText(rgba, bestResult.getSign().msg, bestResult.getRect().center, 0, 0.65D, selectColor, 2);
+                        MatUtil.draw(bestResult.getRect(), rgba, RED);
+                        controller.trigger(bestResult.getSign().direction);
+                        Imgproc.putText(rgba, bestResult.getSign().msg, bestResult.getRect().center, 0, 0.65D, RED, 2);
                         if (isDebug) {
                             Mat cropped = new Mat();
                             matStack.add(cropped);
                             Imgproc.cvtColor(bestResult.getThumbnail(), cropped, Imgproc.COLOR_GRAY2RGBA);
-                            cropped.copyTo(new Mat(rgba, new Rect(20, 20, cropped.width(), cropped.height())));
+                            Mat dest = new Mat(rgba, new Rect(20, 20, cropped.width(), cropped.height()));
+                            matStack.add(dest);
+                            cropped.copyTo(dest);
                         }
                     }
                 }
@@ -142,34 +153,46 @@ public class CameraSightFragment extends Fragment {
                 return rgba;
             }
         });
-        ((VerticalSeekBar) v.findViewById(id.signSizeBar)).setMax(v.findViewById(id.cameraView).getHeight());
-        ((VerticalSeekBar) v.findViewById(id.signSizeBar)).setProgress(this.signMatchSize);
-        ((VerticalSeekBar) v.findViewById(id.signSizeBar)).setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
-            public void onProgressChanged(SeekBar p0, int progress, boolean isUser) {
-                signMatchSize = progress;
+        signSeekBar = v.findViewById(id.signSizeBar);
+        signSeekBar.setMax(cameraView.getHeight());
+        signSeekBar.setProgress(this.signMatchSize);
+        signSeekBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean isUser) {
+                if (isUser)
+                    if (progress >= MIN_SIZE)
+                        signMatchSize = progress;
+                    else seekBar.setProgress(MIN_SIZE);
             }
 
             public void onStartTrackingTouch(SeekBar p0) {
             }
 
             public void onStopTrackingTouch(SeekBar p0) {
-                getPreferences().edit().putInt("sign_size", signMatchSize).apply();
+                if (signMatchSize >= MIN_SIZE)
+                    getPreferences().edit().putInt("sign_size", signMatchSize).apply();
             }
         });
+        firstBlankColumn = v.findViewById(id.first);
+        secondBlankColumn = v.findViewById(id.second);
+        thirdBlankColumn = v.findViewById(id.third);
+        lastBlankColumn = v.findViewById(id.last);
     }
 
-    private void trigger(int direction) {
-        ((MainActivity) this.getActivity()).controller.trigger(direction);
+    private boolean isPrettySquare(Size size) {
+        double fixedWidth=size.width*cameraScaledRatio;
+        if(fixedWidth>size.height)
+            return fixedWidth/size.height<1.2;
+        else return fixedWidth/size.height>0.8;
     }
 
     private void drawSignSizeIndicator(Mat rgba) {
-        Imgproc.line(rgba, new Point((double) rgba.width(), 10.0D), new Point((double) rgba.width() - (double) 20, 10.0D), this.selectColor, 2);
-        Imgproc.line(rgba, new Point((double) rgba.width(), 10.0D + (double) this.signMatchSize), new Point((double) rgba.width() - (double) 20, 10.0D + (double) this.signMatchSize), this.selectColor, 2);
+        Imgproc.line(rgba, new Point((double) rgba.width(), INDICATOR_LENGHT), new Point((double) rgba.width() - (double) 20, INDICATOR_LENGHT), this.RED, 2);
+        Imgproc.line(rgba, new Point((double) rgba.width(), INDICATOR_LENGHT + (double) this.signMatchSize), new Point((double) rgba.width() - (double) 20, INDICATOR_LENGHT + (double) this.signMatchSize), this.RED, 2);
     }
 
     private MatchSignResult getBestMatchSign(Mat thumbnail, RotatedRect rect) {
         TrafficSign sign = null;
-        double diff = 1.0E8D;
+        double diff = BAD_NUMBER;
         for (TrafficSign s : signs) {
             double d = measureDifferenceBetween(s.img, thumbnail);
             if (d < diff) {
@@ -205,10 +228,9 @@ public class CameraSightFragment extends Fragment {
     private double measureDifferenceBetween(Mat A, Mat B) {
         if (A.rows() > 0 && A.rows() == B.rows() && A.cols() > 0 && A.cols() == B.cols()) {
             double errorL2 = Core.norm(A, B, Core.NORM_L2);
-            double error = errorL2 / (double) (A.rows() * A.cols());
-            return error;
+            return errorL2 / (double) (A.rows() * A.cols());
         } else {
-            return 1.0E8D;
+            return BAD_NUMBER;
         }
     }
 
@@ -221,6 +243,7 @@ public class CameraSightFragment extends Fragment {
 
     private RotatedRect getMinAreaRect(MatOfPoint contour) {
         MatOfPoint2f matOfPoint2f = new MatOfPoint2f();
+        matStack.add(matOfPoint2f);
         contour.convertTo(matOfPoint2f, CvType.CV_32F);
         RotatedRect result = Imgproc.minAreaRect(matOfPoint2f);
         matOfPoint2f.release();
@@ -249,36 +272,32 @@ public class CameraSightFragment extends Fragment {
 
     private void switchCamera() {
         if (this.initedOpenCV) {
-            JavaCameraView cam = this.getView().findViewById(id.cameraView);
             if (this.enableCamera) {
                 this.reloadSetting();
-                cam.enableView();
+                cameraView.enableView();
             } else {
-                cam.disableView();
+                cameraView.disableView();
             }
         }
 
         switch (cameraSize) {
             case "Medium":
-                this.setSize(View.INVISIBLE, View.VISIBLE, View.INVISIBLE, View.VISIBLE);
-                break;
-            case "Small":
-                this.setSize(View.INVISIBLE, View.INVISIBLE, View.INVISIBLE, View.INVISIBLE);
+                this.setSize(View.GONE, View.VISIBLE, View.GONE, View.VISIBLE);
                 break;
             case "Fullsize":
+                this.setSize(View.GONE, View.GONE, View.GONE, View.GONE);
+                break;
+            case "Small":
                 this.setSize(View.VISIBLE, View.VISIBLE, View.VISIBLE, View.VISIBLE);
         }
 
     }
 
     private void setSize(int first, int second, int third, int last) {
-        if (this.getView() != null) {
-            this.getView().findViewById(id.first).setVisibility(first);
-            this.getView().findViewById(id.second).setVisibility(second);
-            this.getView().findViewById(id.third).setVisibility(third);
-            this.getView().findViewById(id.last).setVisibility(last);
-        }
-
+        firstBlankColumn.setVisibility(first);
+        secondBlankColumn.setVisibility(second);
+        thirdBlankColumn.setVisibility(third);
+        lastBlankColumn.setVisibility(last);
     }
 
     public void switchCam(boolean enable) {
@@ -294,13 +313,11 @@ public class CameraSightFragment extends Fragment {
                 Log.d("INIT", "OpenCV library found inside package. Using it!");
                 this.initedOpenCV = true;
                 this.preloadImage();
-                this.switchCamera();
             } else {
                 ToastsKt.longToast(this.getActivity(), "OpenCV is not found!!");
                 this.getActivity().finish();
             }
-        }
-
+        } else this.switchCamera();
     }
 
     private void reloadSetting() {
@@ -310,7 +327,7 @@ public class CameraSightFragment extends Fragment {
         this.signMatchSize = this.getPreferences().getInt("sign_size", 100);
         if (getView() != null) {
             VerticalSeekBar seek = getView().findViewById(id.signSizeBar);
-            seek.setMax(getView().findViewById(id.cameraView).getHeight());
+            seek.setMax(cameraView.getHeight());
             seek.setProgress(signMatchSize);
         }
     }

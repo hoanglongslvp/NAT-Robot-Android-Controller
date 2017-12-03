@@ -14,6 +14,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
 
+import com.crashlytics.android.Crashlytics;
 import com.github.kayvannj.permission_utils.Func;
 import com.github.kayvannj.permission_utils.PermissionUtil;
 import com.worker.natrobotcontroller.R;
@@ -29,6 +30,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.fabric.sdk.android.Fabric;
 import kotlin.jvm.internal.Intrinsics;
 
 public final class MainActivity extends AppCompatActivity {
@@ -60,6 +62,7 @@ public final class MainActivity extends AppCompatActivity {
 
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Fabric.with(this, new Crashlytics());
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         this.setContentView(R.layout.activity_main);
@@ -125,10 +128,11 @@ public final class MainActivity extends AppCompatActivity {
         PermissionUtil.with(this).request(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE,
                 Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN,
                 Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.BLUETOOTH_PRIVILEGED).onAllGranted((Func) (new Func() {
+                Manifest.permission.BLUETOOTH_PRIVILEGED,
+                Manifest.permission.INTERNET).onAllGranted(new Func() {
             protected void call() {
             }
-        })).ask(134);//134 is just a random number
+        }).ask(134);//134 is just a random number
     }
 
     public boolean onOptionsItemSelected(@NotNull MenuItem item) {

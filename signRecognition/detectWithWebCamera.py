@@ -5,7 +5,7 @@ from imutils.perspective import four_point_transform
 #from imutils import contours
 import imutils
 
-camera = cv2.VideoCapture(0)
+camera = cv2.VideoCapture('http://192.168.43.1:8080/video')
 
 
 def findTrafficSign():
