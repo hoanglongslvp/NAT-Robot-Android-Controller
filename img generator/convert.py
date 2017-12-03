@@ -11,7 +11,6 @@ def show_and_save(name,img):
     cv2.imshow(name, img)
     cv2.imwrite(name+".jpg", img)
 
-
 origin=cv2.imread("./img.jpg")
 origin=imutils.resize(origin,width=500)
 show_and_save("01origin",origin)
@@ -24,8 +23,16 @@ show_and_save("03mask", mask)
 cnts = cv2.findContours(
             mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
 contours=origin.copy()
-cv2.drawContours(contours,cnts,-1,(0, 0, 255))
+cv2.drawContours(contours,cnts,-1,(0, 0, 255),1)
 show_and_save("04contours", contours)
+cv2.drawContours(contours,cnts,-1,(0, 0, 255),2)
+show_and_save("04contours2", contours)
+mask2=cv2.cvtColor(mask,cv2.COLOR_GRAY2BGR)
+cv2.drawContours(mask2,cnts,-1,(200, 200, 80),1)
+show_and_save("045mask_contours",mask2)
+cv2.drawContours(mask2,cnts,-1,(200, 200, 80),2)
+show_and_save("045mask_contours2",mask2)
+
 rects=origin.copy()
 p=None
 for j,i in enumerate(cnts):
