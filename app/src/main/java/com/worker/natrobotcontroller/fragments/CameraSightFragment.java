@@ -84,7 +84,7 @@ public class CameraSightFragment extends Fragment {
         cameraView = v.findViewById(id.cameraView);
         cameraView.setCvCameraViewListener(new CvCameraViewListener2() {
             public void onCameraViewStarted(int width, int height) {
-                cameraScaledRatio=(16f/9)/(1f*width/height);
+                cameraScaledRatio = (16f / 9) / (1f * width / height);
             }
 
             public void onCameraViewStopped() {
@@ -116,6 +116,8 @@ public class CameraSightFragment extends Fragment {
                             Mat rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, rect.angle, 1.0D);
                             matStack.add(rotationMatrix2D);
                             Mat thumbnail = resizeMat(getThumbnail(mask, rect, rotationMatrix2D), 50, 50);
+                            thumbnail = MatUtil.toBinaryMat(thumbnail);
+                            matStack.add(thumbnail);
                             MatchSignResult best = getBestMatchSign(thumbnail, rect);
                             if (best != null) {
                                 if (bestResult == null) {
@@ -179,10 +181,10 @@ public class CameraSightFragment extends Fragment {
     }
 
     private boolean isPrettySquare(Size size) {
-        double fixedWidth=size.width*cameraScaledRatio;
-        if(fixedWidth>size.height)
-            return fixedWidth/size.height<1.2;
-        else return fixedWidth/size.height>0.8;
+        double fixedWidth = size.width * cameraScaledRatio;
+        if (fixedWidth > size.height)
+            return fixedWidth / size.height < 1.2;
+        else return fixedWidth / size.height > 0.8;
     }
 
     private void drawSignSizeIndicator(Mat rgba) {
