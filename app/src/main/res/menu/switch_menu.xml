@@ -1,9 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/setting_action"
-        android:title="@string/setting" />
-
+        android:icon="@drawable/ic_bluetooth_searching_black_24dp"
+        android:title="Bluetooth"
+        app:showAsAction="ifRoom">
+        <menu >
+            <item
+                android:id="@+id/action_scan"
+                android:title="Scan" />
+            <item
+                android:id="@+id/action_paired"
+                android:title="Paired devices" />
+            <item
+                android:id="@+id/action_toggle"
+                android:title="Toggle bluetooth" />
+        </menu>
+    </item>
 </menu>

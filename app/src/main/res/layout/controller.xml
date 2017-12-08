@@ -131,26 +131,48 @@
         android:orientation="vertical"
         android:padding="4dp">
 
-        <android.support.v7.widget.AppCompatSpinner
+        <TextView
             android:layout_width="match_parent"
-            android:id="@+id/controller_mode"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="4dp"
+            android:layout_marginLeft="8dp"
+            android:text="Controller mode:"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body2" />
+
+        <android.support.v7.widget.AppCompatSpinner
+            android:id="@+id/controller_mode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
             android:entries="@array/controller_modes" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="8dp"
+            android:text="Reset gyroscope:"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body2" />
 
         <Button
             android:id="@+id/reset_gyro"
             style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="match_parent"
+            android:layout_marginBottom="12dp"
             android:layout_height="wrap_content"
             android:text="RESET GYRO" />
 
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="8dp"
+            android:text="Connection and messages:"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body2" />
+
+        <TextView
+            android:layout_marginLeft="8dp"
             android:id="@+id/car_info"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Not connected yet"
-            android:textAppearance="@style/TextAppearance.AppCompat" />
+            android:text="Not connected yet"/>
     </LinearLayout>
 
 </RelativeLayout>

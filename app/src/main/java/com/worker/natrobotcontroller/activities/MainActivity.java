@@ -1,127 +1,137 @@
 package com.worker.natrobotcontroller.activities;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.BottomNavigationView.OnNavigationItemSelectedListener;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
 
-import com.crashlytics.android.Crashlytics;
 import com.github.kayvannj.permission_utils.Func;
 import com.github.kayvannj.permission_utils.PermissionUtil;
 import com.worker.natrobotcontroller.R;
 import com.worker.natrobotcontroller.R.id;
-import com.worker.natrobotcontroller.customView.NoSwipeViewPager;
 import com.worker.natrobotcontroller.fragments.CameraSightFragment;
-import com.worker.natrobotcontroller.fragments.ConnectFragment;
 import com.worker.natrobotcontroller.fragments.JoystickFragment;
 
+import org.jetbrains.anko.ToastsKt;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import io.fabric.sdk.android.Fabric;
-import kotlin.jvm.internal.Intrinsics;
+import java.util.UUID;
 
 public final class MainActivity extends AppCompatActivity {
-    @Nullable
-    public ConnectFragment connect;
-    @Nullable
+
+    private final BluetoothAdapter bluetooth = BluetoothAdapter.getDefaultAdapter();
     public JoystickFragment controller;
-    @Nullable
+    public BluetoothSocket socket;
+    private List<BluetoothDevice> devices = new ArrayList<>();
     private CameraSightFragment camera;
+    private BottomNavigationView navigationView;
     private final OnNavigationItemSelectedListener mOnNavigationItemSelectedListener = (OnNavigationItemSelectedListener) (new OnNavigationItemSelectedListener() {
         public final boolean onNavigationItemSelected(@NotNull MenuItem item) {
-            MainActivity.this.setTitle(item.getTitle());
+            setTitle(item.getTitle());
             switch (item.getItemId()) {
-                case R.id.navigation_connect:
-                    ((NoSwipeViewPager) findViewById(id.main_pager)).setCurrentItem(0);
-                    return true;
                 case R.id.navigation_camera:
-                    ((NoSwipeViewPager) findViewById(id.main_pager)).setCurrentItem(1);
+                    setFragment(camera);
                     return true;
                 case R.id.navigation_joystick:
-                    ((NoSwipeViewPager) findViewById(id.main_pager)).setCurrentItem(2);
+                    setFragment(controller);
                     return true;
             }
-            Log.d("Navigation", "nav called " + ((NoSwipeViewPager) findViewById(id.main_pager)).getCurrentItem());
-            camera.switchCam(((NoSwipeViewPager) findViewById(id.main_pager)).getCurrentItem() == 1);
             return false;
         }
     });
+    private MenuItem toggleItem;
+    BroadcastReceiver mBroadcast = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            switch (intent.getAction()) {
+                case BluetoothAdapter.ACTION_STATE_CHANGED:
+                    int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+                    switch (state) {
+                        case BluetoothAdapter.STATE_OFF:
+                            log("Bluetooth off");
+                            setToggle(false);
+                            break;
+                        case BluetoothAdapter.STATE_TURNING_OFF:
+                            log("Bluetooth turning off");
+                            break;
+                        case BluetoothAdapter.STATE_ON:
+                            log("Bluetooth on");
+                            setToggle(true);
+                            break;
+                        case BluetoothAdapter.STATE_TURNING_ON:
+                            log("Bluetooth turning on");
+                            break;
+                    }
+                    break;
+                case BluetoothDevice.ACTION_FOUND:
+                    BluetoothDevice newDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    devices.add(newDevice);
+                    log("Found " + newDevice.getName() + " at " + newDevice.getAddress());
+                    getConnect();
+                    break;
+                case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
+                    devices.clear();
+                    log("Started discovering");
+                    break;
+                case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
+                    log("Discovery finished");
+                    bluetooth.cancelDiscovery();
+            }
+        }
+    };
 
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    private void setToggle(boolean b) {
+        if (toggleItem != null) {
+            if (b) {
+                toggleItem.setTitle("Turn off bluetooth");
+            } else
+                toggleItem.setTitle("Turn on bluetooth");
+        }
+    }
+
+    public void log(final String s) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                ToastsKt.toast(getApplication(), s);
+                Log.d("NATCAR", s);
+            }
+        });
+    }
+
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Fabric.with(this, new Crashlytics());
-        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        this.setContentView(R.layout.activity_main);
-        this.camera = new CameraSightFragment();
-        this.connect = new ConnectFragment();
-        this.controller = new JoystickFragment();
-        NoSwipeViewPager viewPager = findViewById(id.main_pager);
-        viewPager.setAdapter(new FragmentPagerAdapter(this.getSupportFragmentManager()) {
-            @NotNull
-            private final List fragments = new ArrayList();
-            {
-                fragments.add(MainActivity.this.connect);
-                fragments.add(MainActivity.this.camera);
-                fragments.add(MainActivity.this.controller);
-            }
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        setContentView(R.layout.activity_main);
+        camera = new CameraSightFragment();
+        controller = new JoystickFragment();
+        navigationView = findViewById(id.navigation);
+        navigationView.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
+        setFragment(controller);
+        navigationView.setSelectedItemId(R.id.navigation_joystick);
+        askForPermission();
+    }
 
-            @NotNull
-            public Fragment getItem(int position) {
-                return (Fragment) this.fragments.get(position);
-            }
-
-            public int getCount() {
-                return this.fragments.size();
-            }
-        });
-
-
-        viewPager.addOnPageChangeListener(new OnPageChangeListener() {
-            @Nullable
-            private MenuItem prev;
-
-            public void onPageScrollStateChanged(int state) {
-            }
-
-            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-            }
-
-            public void onPageSelected(int position) {
-                if (this.prev != null) {
-                    this.prev.setChecked(false);
-                } else {
-                    ((BottomNavigationView) findViewById(id.navigation)).getMenu().getItem(0).setChecked(false);
-                }
-
-                this.prev = ((BottomNavigationView) findViewById(id.navigation)).getMenu().getItem(position);
-                if (this.prev != null) {
-                    this.prev.setChecked(true);
-                }
-
-                Log.d("Navigation", "page called " + position);
-                if (MainActivity.this.camera != null) {
-                    MainActivity.this.camera.switchCam(position == 1);
-                }
-
-            }
-        });
-        ((NoSwipeViewPager) findViewById(id.main_pager)).setOffscreenPageLimit(3);
-        ((BottomNavigationView) findViewById(id.navigation)).setOnNavigationItemSelectedListener(this.mOnNavigationItemSelectedListener);
-        this.askForPermission();
+    private void setFragment(Fragment fragment) {
+        getSupportFragmentManager().beginTransaction().replace(id.main_pager, fragment).commit();
     }
 
     private void askForPermission() {
@@ -136,18 +146,101 @@ public final class MainActivity extends AppCompatActivity {
     }
 
     public boolean onOptionsItemSelected(@NotNull MenuItem item) {
-        Intrinsics.checkParameterIsNotNull(item, "item");
         switch (item.getItemId()) {
-            case R.id.setting_action:
-                this.startActivity(new Intent(this, SettingActivity.class));
+            case id.action_scan:
+                if (bluetooth.isEnabled()) {
+                    bluetooth.startDiscovery();
+                } else {
+                    ToastsKt.toast(this, "Bluetooth is not turned on!");
+                }
+                break;
+            case id.action_paired:
+                devices.clear();
+                devices.addAll(bluetooth.getBondedDevices());
+                getConnect();
+                break;
+            case id.action_toggle:
+                toogleBluetooth();
+                break;
             default:
                 return super.onOptionsItemSelected(item);
+        }
+        return true;
+    }
+
+    private void toogleBluetooth() {
+        if (bluetooth.isEnabled()) {
+            bluetooth.disable();
+        } else {
+            bluetooth.enable();
         }
     }
 
     public boolean onCreateOptionsMenu(@NotNull Menu menu) {
-        Intrinsics.checkParameterIsNotNull(menu, "menu");
-        this.getMenuInflater().inflate(R.menu.switch_menu, menu);
+        getMenuInflater().inflate(R.menu.switch_menu, menu);
+        toggleItem = menu.findItem(id.action_toggle);
+        setToggle(bluetooth.isEnabled());
         return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("android.bluetooth.adapter.action.STATE_CHANGED");
+        filter.addAction("android.bluetooth.device.action.FOUND");
+        filter.addAction("android.bluetooth.adapter.action.DISCOVERY_STARTED");
+        filter.addAction("android.bluetooth.adapter.action.DISCOVERY_FINISHED");
+        registerReceiver(mBroadcast, filter);
+    }
+
+    public void onPause() {
+        super.onPause();
+        unregisterReceiver(mBroadcast);
+    }
+
+    private void getConnect() {
+        final ArrayList<String> names = new ArrayList<>();
+        for (BluetoothDevice d : devices) {
+            names.add("Devices " + d.getName());
+        }
+
+        final CharSequence[] _names = new CharSequence[names.size()];
+        names.toArray(_names);
+
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final AlertDialog alertDialog = builder.setSingleChoiceItems(_names, -1, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                startConnecting(devices.get(i));
+                bluetooth.cancelDiscovery();
+                dialogInterface.dismiss();
+            }
+        }).create();
+        alertDialog.show();
+    }
+
+    private void startConnecting(BluetoothDevice device) {
+        try {
+            socket = device.createInsecureRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"));
+            log("Try to connect to socket");
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        socket.connect();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        log("Connect to socket fail : " + e.getMessage());
+                    }
+                    log("Connected to socket");
+                }
+            }).start();
+        } catch (IOException e) {
+            e.printStackTrace();
+            log("Connect to socket fail : " + e.getMessage());
+            socket = null;
+        }
+
     }
 }

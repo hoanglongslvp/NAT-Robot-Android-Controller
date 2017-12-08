@@ -5,51 +5,84 @@
     android:layout_height="match_parent"
     android:orientation="horizontal">
 
-
-    <View
-        android:id="@+id/first"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1" />
-
-    <com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper
-        android:id="@+id/verticalSeekBarWrapper"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:layout_gravity="center_horizontal">
-
-        <com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
-            android:id="@+id/signSizeBar"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:max="255"
-            android:progress="200"
-            android:splitTrack="false"
-            app:seekBarRotation="CW270" /> <!-- Rotation: CW90 or CW270 -->
-    </com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper>
-
-    <View
-        android:id="@+id/second"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1" />
-
-    <org.opencv.android.JavaCameraView
-        android:id="@+id/cameraView"
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="2"
-        app:show_fps="true" />
+        android:orientation="vertical"
+        android:padding="4dp">
 
-    <View
-        android:id="@+id/third"
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="8dp"
+            android:text="Show debug info:"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body2" />
+
+        <CheckBox
+            android:id="@+id/isDebugCB"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="Debug" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="8dp"
+            android:text="Screen size:"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body2" />
+
+        <Spinner
+            android:id="@+id/screenSizeSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:entries="@array/cameraSizes" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="8dp"
+            android:text="Minimal traffic sign size:"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body2" />
+
+        <SeekBar
+            android:id="@+id/signSizeBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:max="255"
+            android:progress="200" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="8dp"
+            android:text="Detection threshold:"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body2" />
+
+        <EditText
+            android:id="@+id/thresholdED"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="4dp"
+            android:hint="Default is 1.5"
+            android:inputType="number" />
+    </LinearLayout>
+
+    <FrameLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1" />
+        android:layout_weight="4">
 
-    <View
-        android:id="@+id/last"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1" />
+        <org.opencv.android.JavaCameraView
+            android:id="@+id/cameraView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_vertical|center_horizontal"
+            app:show_fps="true" />
+
+    </FrameLayout>
+
 </LinearLayout>

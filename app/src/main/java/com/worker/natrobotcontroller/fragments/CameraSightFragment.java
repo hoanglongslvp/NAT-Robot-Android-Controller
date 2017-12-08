@@ -1,17 +1,25 @@
 package com.worker.natrobotcontroller.fragments;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.Spinner;
 
-import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar;
 import com.worker.natrobotcontroller.R;
 import com.worker.natrobotcontroller.R.id;
 import com.worker.natrobotcontroller.activities.MainActivity;
@@ -43,29 +51,24 @@ public class CameraSightFragment extends Fragment {
     public static final int MIN_SIZE = 1;
     public static final int BAD_NUMBER = 100000000;
     public static final double INDICATOR_LENGHT = 10;
-    private boolean enableCamera;
     private boolean initedOpenCV;
     private boolean isDebug;
-    private String cameraSize = "Fullsize";
     private double detectThreshold = 1.5D;
     private Scalar LIGHT_BLUE = new Scalar(25.0D, 118.0D, 210);
     private Scalar RED = new Scalar(255.0D, 64.0D, 129.0D);
-
     private List<Mat> matStack = new ArrayList<>();
-
     private List<TrafficSign> signs = new ArrayList<>();
-
     private MatchSignResult bestResult;
     private int signMatchSize;
     private SharedPreferences preferences;
     private JavaCameraView cameraView;
     private JoystickFragment controller;
-    private VerticalSeekBar signSeekBar;
-    private View firstBlankColumn;
-    private View secondBlankColumn;
-    private View thirdBlankColumn;
-    private View lastBlankColumn;
+    private SeekBar signSeekBar;
     private float cameraScaledRatio = 1;
+    private CheckBox isDebugCB;
+    private EditText thresholdED;
+    private Spinner screenSizeSpinner;
+    private int oldSize=1;
 
     public SharedPreferences getPreferences() {
         if (preferences == null)
@@ -85,6 +88,9 @@ public class CameraSightFragment extends Fragment {
         cameraView.setCvCameraViewListener(new CvCameraViewListener2() {
             public void onCameraViewStarted(int width, int height) {
                 cameraScaledRatio = (16f / 9) / (1f * width / height);
+                signSeekBar.setMax(height);
+                signMatchSize=signSeekBar.getMax()/2;
+                signSeekBar.setProgress(signMatchSize);
             }
 
             public void onCameraViewStopped() {
@@ -155,7 +161,8 @@ public class CameraSightFragment extends Fragment {
                 return rgba;
             }
         });
-        signSeekBar = v.findViewById(id.signSizeBar);
+
+        signSeekBar = v.findViewById(R.id.signSizeBar);
         signSeekBar.setMax(cameraView.getHeight());
         signSeekBar.setProgress(this.signMatchSize);
         signSeekBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
@@ -174,10 +181,61 @@ public class CameraSightFragment extends Fragment {
                     getPreferences().edit().putInt("sign_size", signMatchSize).apply();
             }
         });
-        firstBlankColumn = v.findViewById(id.first);
-        secondBlankColumn = v.findViewById(id.second);
-        thirdBlankColumn = v.findViewById(id.third);
-        lastBlankColumn = v.findViewById(id.last);
+        isDebugCB = v.findViewById(id.isDebugCB);
+        isDebugCB.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                isDebug = b;
+            }
+        });
+        thresholdED = v.findViewById(id.thresholdED);
+        thresholdED.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                try {
+                    float value = Float.parseFloat(editable.toString());
+                    detectThreshold = value;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    ToastsKt.toast(getActivity(), "Threshold value is malformed!");
+                }
+            }
+        });
+        screenSizeSpinner = v.findViewById(id.screenSizeSpinner);
+        screenSizeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                setCameraSize(i);
+
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+
+        cameraView.enableView();
+    }
+
+    private void setCameraSize(int size) {
+        cameraView.disableView();
+        FrameLayout parent = (FrameLayout) cameraView.getParent();
+        ViewGroup.LayoutParams layoutParams = cameraView.getLayoutParams();
+        layoutParams.width = parent.getWidth() / (size + 1);
+        layoutParams.height = parent.getHeight() / (size + 1);
+        cameraView.setLayoutParams(layoutParams);
+        cameraView.enableView();
     }
 
     private boolean isPrettySquare(Size size) {
@@ -256,7 +314,7 @@ public class CameraSightFragment extends Fragment {
         ArrayList<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
         this.matStack.add(hierarchy);
-        Imgproc.findContours(mask, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE, new Point(0.0D, 0.0D));
+        Imgproc.findContours(mask, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE, new Point(0.0D, 0.0D));
         return contours;
     }
 
@@ -272,44 +330,9 @@ public class CameraSightFragment extends Fragment {
         return mask;
     }
 
-    private void switchCamera() {
-        if (this.initedOpenCV) {
-            if (this.enableCamera) {
-                this.reloadSetting();
-                cameraView.enableView();
-            } else {
-                cameraView.disableView();
-            }
-        }
-
-        switch (cameraSize) {
-            case "Medium":
-                this.setSize(View.GONE, View.VISIBLE, View.GONE, View.VISIBLE);
-                break;
-            case "Fullsize":
-                this.setSize(View.GONE, View.GONE, View.GONE, View.GONE);
-                break;
-            case "Small":
-                this.setSize(View.VISIBLE, View.VISIBLE, View.VISIBLE, View.VISIBLE);
-        }
-
-    }
-
-    private void setSize(int first, int second, int third, int last) {
-        firstBlankColumn.setVisibility(first);
-        secondBlankColumn.setVisibility(second);
-        thirdBlankColumn.setVisibility(third);
-        lastBlankColumn.setVisibility(last);
-    }
-
-    public void switchCam(boolean enable) {
-        this.enableCamera = enable;
-        this.switchCamera();
-    }
-
-    public void onResume() {
-        super.onResume();
-        this.reloadSetting();
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
         if (!this.initedOpenCV) {
             if (OpenCVLoader.initDebug()) {
                 Log.d("INIT", "OpenCV library found inside package. Using it!");
@@ -319,19 +342,16 @@ public class CameraSightFragment extends Fragment {
                 ToastsKt.longToast(this.getActivity(), "OpenCV is not found!!");
                 this.getActivity().finish();
             }
-        } else this.switchCamera();
-    }
-
-    private void reloadSetting() {
-        this.isDebug = this.getPreferences().getBoolean("is_debug", true);
-        this.detectThreshold = Double.parseDouble(this.getPreferences().getString("detect_threshold", "1.5"));
-        this.cameraSize = this.getPreferences().getString("camera_size", "Fullsize");
-        this.signMatchSize = this.getPreferences().getInt("sign_size", 100);
-        if (getView() != null) {
-            VerticalSeekBar seek = getView().findViewById(id.signSizeBar);
-            seek.setMax(cameraView.getHeight());
-            seek.setProgress(signMatchSize);
+        } else {
+            cameraView.enableView();
         }
     }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        cameraView.disableView();
+    }
+
 
 }

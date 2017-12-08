@@ -39,45 +39,46 @@ public final class JoystickFragment extends Fragment {
     public int backDistance;
     public int currentAngle;
     public int desiredAngle;
-    public ConnectFragment connect;
     public boolean reading = true;
     TextView info;
     private SharedPreferences preferences;
+    private View v;
+    private MainActivity activity;
 
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        this.connect = ((MainActivity) getActivity()).connect;
-        final View v = inflater.inflate(R.layout.controller, container, false);
+        activity = (MainActivity) getActivity();
+        v = inflater.inflate(R.layout.controller, container, false);
         info = v.findViewById(id.car_info);
         v.findViewById(id.fowardBtn).setOnClickListener(new OnClickListener() {
             public final void onClick(View it) {
-                sendCommand(connect, "_0;s" + speed + ';');
+                sendCommand("_0;s" + speed + ';');
             }
         });
         v.findViewById(id.backBtn).setOnClickListener(new OnClickListener() {
             public final void onClick(View it) {
-                sendCommand(connect, "_180;s" + speed + ';');
+                sendCommand("_180;s" + speed + ';');
             }
         });
         v.findViewById(id.leftBtn).setOnClickListener(new OnClickListener() {
             public final void onClick(View it) {
-                sendCommand(connect, "_90;s" + speed + ';');
+                sendCommand("_90;s" + speed + ';');
             }
         });
         v.findViewById(id.rightBtn).setOnClickListener(new OnClickListener() {
             public final void onClick(View it) {
-                sendCommand(connect, "_-90;s" + speed + ';');
+                sendCommand("_-90;s" + speed + ';');
             }
         });
         v.findViewById(id.stopBtn).setOnClickListener(new OnClickListener() {
             public final void onClick(View it) {
-                sendCommand(connect, "p10;");
+                sendCommand("p10;");
             }
         });
         ((VerticalSeekBar) v.findViewById(id.speedBar)).setProgress(this.speed);
         ((VerticalSeekBar) v.findViewById(id.speedBar)).setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar p0, int progress, boolean fromUser) {
                 speed = progress;
-                sendCommand(connect, "" + 's' + speed + ';');
+                sendCommand("" + 's' + speed + ';');
             }
 
             public void onStartTrackingTouch(SeekBar p0) {
@@ -90,12 +91,12 @@ public final class JoystickFragment extends Fragment {
             public final void onMove(int angle, int strength) {
                 int pwm = strength * 255 / 100;
                 String cmd = "" + '_' + (angle - 90) + ";s" + pwm + ';';
-                sendCommand(connect, cmd);
+                sendCommand(cmd);
             }
         }, 200);
         v.findViewById(id.reset_gyro).setOnClickListener(new View.OnClickListener() {
             public final void onClick(View it) {
-                sendCommand(connect, "g20;");
+                sendCommand("g20;");
             }
         });
 
@@ -105,7 +106,6 @@ public final class JoystickFragment extends Fragment {
 
             public void onItemSelected(AdapterView p0, View p1, int p2, long p3) {
                 String mode = ((AppCompatSpinner) v.findViewById(id.controller_mode)).getSelectedItem().toString();
-                ToastsKt.toast(getActivity(), mode);
                 selectMode(mode);
                 getPreferences().edit().putString("control_mode", mode).apply();
             }
@@ -123,14 +123,14 @@ public final class JoystickFragment extends Fragment {
         switch (mode) {
             case "Game pad":
                 if (mode.equals("Game pad")) {
-                    this.getView().findViewById(id.keyboard_layout).setVisibility(View.VISIBLE);
-                    this.getView().findViewById(id.joystickR).setVisibility(View.INVISIBLE);
+                    v.findViewById(id.keyboard_layout).setVisibility(View.VISIBLE);
+                    v.findViewById(id.joystickR).setVisibility(View.INVISIBLE);
                 }
                 break;
             case "Joystick":
                 if (mode.equals("Joystick")) {
-                    this.getView().findViewById(id.keyboard_layout).setVisibility(View.INVISIBLE);
-                    this.getView().findViewById(id.joystickR).setVisibility(View.VISIBLE);
+                    v.findViewById(id.keyboard_layout).setVisibility(View.INVISIBLE);
+                    v.findViewById(id.joystickR).setVisibility(View.VISIBLE);
                 }
         }
 
@@ -156,21 +156,18 @@ public final class JoystickFragment extends Fragment {
         this.mode = this.getPreferences().getString("control_mode", "Joystick");
     }
 
-    public final void sendCommand(ConnectFragment connect, String command) {
+    public final void sendCommand(String command) {
         try {
-            connect.log("Try to send " + command);
-            connect.socket.getOutputStream().write(command.getBytes(Charsets.UTF_8));
+            activity.socket.getOutputStream().write(command.getBytes(Charsets.UTF_8));
         } catch (Exception e) {
             e.printStackTrace();
-            this.getView().<TextView>findViewById(id.car_info).setText("Not connected");
+            v.<TextView>findViewById(id.car_info).setText("Not connected");
         }
-
     }
 
-    public final void slimSendCommand(ConnectFragment connect, String command) {
+    public final void slimSendCommand(String command) {
         try {
-            connect.log("Try to send " + command);
-            connect.socket.getOutputStream().write(command.getBytes(Charsets.UTF_8));
+            activity.socket.getOutputStream().write(command.getBytes(Charsets.UTF_8));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -179,7 +176,7 @@ public final class JoystickFragment extends Fragment {
 
     public final void trigger(int direction) {
         if (direction == -1) {
-            this.slimSendCommand(this.connect, "p10;");
+            this.slimSendCommand("p10;");
         } else {
             int tmp = this.currentAngle + direction * 90;
             while (tmp < 0) {
@@ -197,7 +194,7 @@ public final class JoystickFragment extends Fragment {
             } else if (tmp < 315) {
                 tmp = 270;
             }
-            this.slimSendCommand(this.connect, "" + '_' + tmp + ";s250;");
+            this.slimSendCommand("_" + tmp + ";s250;");
         }
 
     }
@@ -213,8 +210,7 @@ public final class JoystickFragment extends Fragment {
         protected Void doInBackground(Void... voids) {
             while (reading) {
                 try {
-                    String line = new BufferedReader(new InputStreamReader(connect.socket.getInputStream())).readLine().trim();
-                    Log.d("BLUETOOTHx", "read" + line);
+                    String line = new BufferedReader(new InputStreamReader(activity.socket.getInputStream())).readLine().trim();
                     if (!line.isEmpty()) {
                         for (String cmd : line.split(";")) {
                             if (!cmd.isEmpty()) {
