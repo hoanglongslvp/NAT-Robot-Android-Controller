@@ -68,7 +68,9 @@ public class CameraSightFragment extends Fragment {
     private CheckBox isDebugCB;
     private EditText thresholdED;
     private Spinner screenSizeSpinner;
-    private int oldSize=1;
+    private MainActivity activity;
+    private int maxWidth = -1;
+    private int oldSize;
 
     public SharedPreferences getPreferences() {
         if (preferences == null)
@@ -78,6 +80,7 @@ public class CameraSightFragment extends Fragment {
 
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.camera_sight, container, false);
+        activity = (MainActivity) getActivity();
         controller = ((MainActivity) this.getActivity()).controller;
         this.setupView(v);
         return v;
@@ -87,9 +90,12 @@ public class CameraSightFragment extends Fragment {
         cameraView = v.findViewById(id.cameraView);
         cameraView.setCvCameraViewListener(new CvCameraViewListener2() {
             public void onCameraViewStarted(int width, int height) {
+                if (maxWidth == -1) {
+                    maxWidth = ((FrameLayout) cameraView.getParent()).getWidth();
+                }
                 cameraScaledRatio = (16f / 9) / (1f * width / height);
-                signSeekBar.setMax(height);
-                signMatchSize=signSeekBar.getMax()/2;
+                signSeekBar.setMax(height - 10);
+                signMatchSize = signSeekBar.getMax() / 2;
                 signSeekBar.setProgress(signMatchSize);
             }
 
@@ -229,12 +235,15 @@ public class CameraSightFragment extends Fragment {
     }
 
     private void setCameraSize(int size) {
-        cameraView.disableView();
-        FrameLayout parent = (FrameLayout) cameraView.getParent();
-        ViewGroup.LayoutParams layoutParams = cameraView.getLayoutParams();
-        layoutParams.width = parent.getWidth() / (size + 1);
-        layoutParams.height = parent.getHeight() / (size + 1);
-        cameraView.setLayoutParams(layoutParams);
+        if (size != oldSize) {
+            activity.log("Camera is changing size, please wait...");
+            FrameLayout parent = (FrameLayout) cameraView.getParent();
+            ViewGroup.LayoutParams layoutParams = cameraView.getLayoutParams();
+//        layoutParams.width = parent.getWidth() / (size + 1);
+            layoutParams.width = maxWidth / (size + 1);
+            cameraView.setLayoutParams(layoutParams);
+            oldSize=size;
+        }
         cameraView.enableView();
     }
 
@@ -339,7 +348,7 @@ public class CameraSightFragment extends Fragment {
                 this.initedOpenCV = true;
                 this.preloadImage();
             } else {
-                ToastsKt.longToast(this.getActivity(), "OpenCV is not found!!");
+                activity.log("OpenCV is not found!!");
                 this.getActivity().finish();
             }
         } else {
