@@ -1,14 +1,10 @@
-package com.worker.natrobotcontroller.fragments;
+package com.worker.natrobotcontroller.components;
 
-import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -47,10 +43,11 @@ import org.opencv.imgproc.Imgproc;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CameraSightFragment extends Fragment {
+public class CameraSightFragment {
     public static final int MIN_SIZE = 1;
     public static final int BAD_NUMBER = 100000000;
     public static final double INDICATOR_LENGHT = 10;
+    private View view;
     private boolean initedOpenCV;
     private boolean isDebug;
     private double detectThreshold = 1.5D;
@@ -71,19 +68,20 @@ public class CameraSightFragment extends Fragment {
     private MainActivity activity;
     private int maxWidth = -1;
     private int oldSize;
+    private boolean isShow = false;
 
-    public SharedPreferences getPreferences() {
-        if (preferences == null)
-            preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        return preferences;
+    public CameraSightFragment(MainActivity activity, View root) {
+        this.activity = activity;
+        this.view = root;
+        controller = this.activity.controller;
+        initOpenCV();
+        setupView(root);
     }
 
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.camera_sight, container, false);
-        activity = (MainActivity) getActivity();
-        controller = ((MainActivity) this.getActivity()).controller;
-        this.setupView(v);
-        return v;
+    private SharedPreferences getPreferences() {
+        if (preferences == null)
+            preferences = PreferenceManager.getDefaultSharedPreferences(activity);
+        return preferences;
     }
 
     private void setupView(View v) {
@@ -103,68 +101,72 @@ public class CameraSightFragment extends Fragment {
             }
 
             public Mat onCameraFrame(CvCameraViewFrame frame) {
-                for (Mat m : matStack) {
-                    m.release();
-                }
-                matStack.clear();
-                Mat rgba = frame.rgba();
-                matStack.add(rgba);
-                Mat mask = getColorMask(rgba);
-                List<MatOfPoint> contours = getContours(mask);
-                bestResult = null;
-                if (contours.size() > 0) {
-                    if (isDebug) {
-                        Imgproc.drawContours(rgba, contours, -1, LIGHT_BLUE);
+                if (isShow) {
+                    for (Mat m : matStack) {
+                        m.release();
                     }
+                    matStack.clear();
+                    Mat rgba = frame.rgba();
+                    matStack.add(rgba);
+                    Mat mask = getColorMask(rgba);
+                    List<MatOfPoint> contours = getContours(mask);
+                    bestResult = null;
+                    if (contours.size() > 0) {
+                        if (isDebug) {
+                            Imgproc.drawContours(rgba, contours, -1, LIGHT_BLUE);
+                        }
 
-                    for (MatOfPoint contour : contours) {
-                        RotatedRect rect = getMinAreaRect(contour);
-                        if ((rect.size.height > (double) signMatchSize) && isPrettySquare(rect.size)) {
-
-                            if (isDebug) {
-                                MatUtil.draw(rect, rgba, LIGHT_BLUE);
-                            }
-                            MatUtil.fixRotation(rect);
-                            Mat rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, rect.angle, 1.0D);
-                            matStack.add(rotationMatrix2D);
-                            Mat thumbnail = resizeMat(getThumbnail(mask, rect, rotationMatrix2D), 50, 50);
-                            thumbnail = MatUtil.toBinaryMat(thumbnail);
-                            matStack.add(thumbnail);
-                            MatchSignResult best = getBestMatchSign(thumbnail, rect);
-                            if (best != null) {
-                                if (bestResult == null) {
-                                    bestResult = best;
-                                } else {
-                                    if (best.getRect().size.area() > bestResult.getRect().size.area()) {
-                                        bestResult = best;
-                                    }
-                                }
+                        for (MatOfPoint contour : contours) {
+                            RotatedRect rect = getMinAreaRect(contour);
+                            if ((rect.size.height > (double) signMatchSize) && isPrettySquare(rect.size)) {
 
                                 if (isDebug) {
-                                    Imgproc.putText(rgba, best.getSign().msg + ":" + best.getError(), bestResult.getRect().center, 0, 0.65D, LIGHT_BLUE, 2);
+                                    MatUtil.draw(rect, rgba, LIGHT_BLUE);
+                                }
+                                MatUtil.fixRotation(rect);
+                                Mat rotationMatrix2D = Imgproc.getRotationMatrix2D(rect.center, rect.angle, 1.0D);
+                                matStack.add(rotationMatrix2D);
+                                Mat thumbnail = resizeMat(getThumbnail(mask, rect, rotationMatrix2D), 50, 50);
+                                thumbnail = MatUtil.toBinaryMat(thumbnail);
+                                matStack.add(thumbnail);
+                                MatchSignResult best = getBestMatchSign(thumbnail, rect);
+                                if (best != null) {
+                                    if (bestResult == null) {
+                                        bestResult = best;
+                                    } else {
+                                        if (best.getRect().size.area() > bestResult.getRect().size.area()) {
+                                            bestResult = best;
+                                        }
+                                    }
+
+                                    if (isDebug) {
+                                        Imgproc.putText(rgba, best.getSign().msg + ":" + best.getError(), bestResult.getRect().center, 0, 0.65D, LIGHT_BLUE, 2);
+                                    }
                                 }
                             }
+                            contour.release();
                         }
-                        contour.release();
+
+                        if (bestResult != null) {
+                            MatUtil.draw(bestResult.getRect(), rgba, RED);
+                            if (isShow)
+                                controller.trigger(bestResult.getSign().direction);
+                            Imgproc.putText(rgba, bestResult.getSign().msg, bestResult.getRect().center, 0, 0.65D, RED, 2);
+                            if (isDebug) {
+                                Mat cropped = new Mat();
+                                matStack.add(cropped);
+                                Imgproc.cvtColor(bestResult.getThumbnail(), cropped, Imgproc.COLOR_GRAY2RGBA);
+                                Mat dest = new Mat(rgba, new Rect(20, 20, cropped.width(), cropped.height()));
+                                matStack.add(dest);
+                                cropped.copyTo(dest);
+                            }
+                        }
                     }
 
-                    if (bestResult != null) {
-                        MatUtil.draw(bestResult.getRect(), rgba, RED);
-                        controller.trigger(bestResult.getSign().direction);
-                        Imgproc.putText(rgba, bestResult.getSign().msg, bestResult.getRect().center, 0, 0.65D, RED, 2);
-                        if (isDebug) {
-                            Mat cropped = new Mat();
-                            matStack.add(cropped);
-                            Imgproc.cvtColor(bestResult.getThumbnail(), cropped, Imgproc.COLOR_GRAY2RGBA);
-                            Mat dest = new Mat(rgba, new Rect(20, 20, cropped.width(), cropped.height()));
-                            matStack.add(dest);
-                            cropped.copyTo(dest);
-                        }
-                    }
+                    drawSignSizeIndicator(rgba);
+                    return rgba;
                 }
-
-                drawSignSizeIndicator(rgba);
-                return rgba;
+                return null;
             }
         });
 
@@ -209,15 +211,15 @@ public class CameraSightFragment extends Fragment {
             @Override
             public void afterTextChanged(Editable editable) {
                 try {
-                    float value = Float.parseFloat(editable.toString());
-                    detectThreshold = value;
+                    detectThreshold = Float.parseFloat(editable.toString());
                 } catch (Exception e) {
                     e.printStackTrace();
-                    ToastsKt.toast(getActivity(), "Threshold value is malformed!");
+                    ToastsKt.toast(activity, "Threshold value is malformed!");
                 }
             }
         });
         screenSizeSpinner = v.findViewById(id.screenSizeSpinner);
+        screenSizeSpinner.setSelection(0, false);
         screenSizeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
@@ -230,19 +232,16 @@ public class CameraSightFragment extends Fragment {
 
             }
         });
-
         cameraView.enableView();
     }
 
     private void setCameraSize(int size) {
         if (size != oldSize) {
             activity.log("Camera is changing size, please wait...");
-            FrameLayout parent = (FrameLayout) cameraView.getParent();
             ViewGroup.LayoutParams layoutParams = cameraView.getLayoutParams();
-//        layoutParams.width = parent.getWidth() / (size + 1);
             layoutParams.width = maxWidth / (size + 1);
             cameraView.setLayoutParams(layoutParams);
-            oldSize=size;
+            oldSize = size;
         }
         cameraView.enableView();
     }
@@ -287,11 +286,11 @@ public class CameraSightFragment extends Fragment {
     }
 
     private void preloadImage() {
-        signs.add(new TrafficSign("Turn right", getActivity(), R.drawable.turnright, TrafficSign.RIGHT));
-        signs.add(new TrafficSign("Turn left", getActivity(), R.drawable.turnleft, TrafficSign.LEFT));
-        signs.add(new TrafficSign("Turn back", getActivity(), R.drawable.turnback, TrafficSign.BACK));
-        signs.add(new TrafficSign("Move straight", getActivity(), R.drawable.movestraight, TrafficSign.STRAIGHT));
-        signs.add(new TrafficSign("Stop", getActivity(), R.drawable.stopx, TrafficSign.STOP));
+        signs.add(new TrafficSign("Turn right", activity, R.drawable.turnright, TrafficSign.RIGHT));
+        signs.add(new TrafficSign("Turn left", activity, R.drawable.turnleft, TrafficSign.LEFT));
+        signs.add(new TrafficSign("Turn back", activity, R.drawable.turnback, TrafficSign.BACK));
+        signs.add(new TrafficSign("Move straight", activity, R.drawable.movestraight, TrafficSign.STRAIGHT));
+        signs.add(new TrafficSign("Stop", activity, R.drawable.stopx, TrafficSign.STOP));
     }
 
     private double measureDifferenceBetween(Mat A, Mat B) {
@@ -339,28 +338,26 @@ public class CameraSightFragment extends Fragment {
         return mask;
     }
 
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        if (!this.initedOpenCV) {
-            if (OpenCVLoader.initDebug()) {
-                Log.d("INIT", "OpenCV library found inside package. Using it!");
-                this.initedOpenCV = true;
-                this.preloadImage();
-            } else {
-                activity.log("OpenCV is not found!!");
-                this.getActivity().finish();
-            }
+    public void hide() {
+        view.setVisibility(View.INVISIBLE);
+        isShow = false;
+    }
+
+    public void show() {
+        isShow = true;
+        view.setVisibility(View.VISIBLE);
+        if (!this.initedOpenCV)
+            initOpenCV();
+    }
+
+    private void initOpenCV() {
+        if (OpenCVLoader.initDebug()) {
+            Log.d("INIT", "OpenCV library found inside package. Using it!");
+            this.initedOpenCV = true;
+            this.preloadImage();
         } else {
-            cameraView.enableView();
+            activity.log("OpenCV is not found!!");
+            this.activity.finish();
         }
     }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-        cameraView.disableView();
-    }
-
-
 }

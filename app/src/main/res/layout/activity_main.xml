@@ -27,6 +27,16 @@
         app:layout_constraintBottom_toTopOf="@+id/navigation"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <include
+            android:id="@+id/camera_sight_view"
+            layout="@layout/camera_sight" />
+
+        <include
+            android:id="@+id/controller_view"
+            layout="@layout/controller" />
+
+    </FrameLayout>
 
 </android.support.constraint.ConstraintLayout>

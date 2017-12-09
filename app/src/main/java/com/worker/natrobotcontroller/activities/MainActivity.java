@@ -13,7 +13,6 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.BottomNavigationView.OnNavigationItemSelectedListener;
-import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -24,8 +23,8 @@ import com.github.kayvannj.permission_utils.Func;
 import com.github.kayvannj.permission_utils.PermissionUtil;
 import com.worker.natrobotcontroller.R;
 import com.worker.natrobotcontroller.R.id;
-import com.worker.natrobotcontroller.fragments.CameraSightFragment;
-import com.worker.natrobotcontroller.fragments.JoystickFragment;
+import com.worker.natrobotcontroller.components.CameraSightFragment;
+import com.worker.natrobotcontroller.components.JoystickFragment;
 
 import org.jetbrains.anko.ToastsKt;
 import org.jetbrains.annotations.NotNull;
@@ -42,22 +41,25 @@ public final class MainActivity extends AppCompatActivity {
     public BluetoothSocket socket;
     private List<BluetoothDevice> devices = new ArrayList<>();
     private CameraSightFragment camera;
-    private BottomNavigationView navigationView;
     private final OnNavigationItemSelectedListener mOnNavigationItemSelectedListener = (OnNavigationItemSelectedListener) (new OnNavigationItemSelectedListener() {
         public final boolean onNavigationItemSelected(@NotNull MenuItem item) {
             setTitle(item.getTitle());
             switch (item.getItemId()) {
                 case R.id.navigation_camera:
-                    setFragment(camera);
+                    camera.show();
+                    controller.hide();
                     return true;
                 case R.id.navigation_joystick:
-                    setFragment(controller);
+                    camera.hide();
+                    controller.show();
                     return true;
             }
             return false;
         }
     });
+    private BottomNavigationView navigationView;
     private MenuItem toggleItem;
+    private MenuItem networkIndicator;
     BroadcastReceiver mBroadcast = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             switch (intent.getAction()) {
@@ -121,18 +123,16 @@ public final class MainActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
-        camera = new CameraSightFragment();
-        controller = new JoystickFragment();
+        controller = new JoystickFragment(this, findViewById(id.controller_view));
+        camera = new CameraSightFragment(this, findViewById(id.camera_sight_view));
         navigationView = findViewById(id.navigation);
         navigationView.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
-        setFragment(controller);
         navigationView.setSelectedItemId(R.id.navigation_joystick);
+//        camera.hide();
+//        controller.show();
         askForPermission();
     }
 
-    private void setFragment(Fragment fragment) {
-        getSupportFragmentManager().beginTransaction().replace(id.main_pager, fragment).commit();
-    }
 
     private void askForPermission() {
         PermissionUtil.with(this).request(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE,
@@ -180,6 +180,7 @@ public final class MainActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.switch_menu, menu);
         toggleItem = menu.findItem(id.action_toggle);
         setToggle(bluetooth.isEnabled());
+        networkIndicator = menu.findItem(id.network_indicator);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -192,11 +193,13 @@ public final class MainActivity extends AppCompatActivity {
         filter.addAction("android.bluetooth.adapter.action.DISCOVERY_STARTED");
         filter.addAction("android.bluetooth.adapter.action.DISCOVERY_FINISHED");
         registerReceiver(mBroadcast, filter);
+        controller.startReading();
     }
 
     public void onPause() {
         super.onPause();
         unregisterReceiver(mBroadcast);
+        controller.stopReading();
     }
 
     private void getConnect() {
@@ -220,27 +223,42 @@ public final class MainActivity extends AppCompatActivity {
         alertDialog.show();
     }
 
-    private void startConnecting(BluetoothDevice device) {
-        try {
-            socket = device.createInsecureRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"));
-            log("Try to connect to socket");
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        socket.connect();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        log("Connect to socket fail : " + e.getMessage());
-                    }
+    private void startConnecting(final BluetoothDevice device) {
+        log("Try to connect to socket");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    socket = device.createInsecureRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"));
+                    socket.connect();
                     log("Connected to socket");
+                    setOnline();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    log("Connect to socket fail : " + e.getMessage());
+                    socket = null;
+                    setOffline();
                 }
-            }).start();
-        } catch (IOException e) {
-            e.printStackTrace();
-            log("Connect to socket fail : " + e.getMessage());
-            socket = null;
-        }
+            }
+        }).start();
+    }
 
+    public void setOffline() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                networkIndicator.setIcon(R.drawable.ic_signal_wifi_off_black_24dp);
+            }
+        });
+    }
+
+    public void setOnline() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                networkIndicator.setIcon(R.drawable.ic_signal_wifi_4_bar_black_24dp);
+            }
+        });
     }
 }
+
