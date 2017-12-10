@@ -20,6 +20,7 @@ import com.worker.natrobotcontroller.R;
 import com.worker.natrobotcontroller.R.id;
 import com.worker.natrobotcontroller.activities.MainActivity;
 import com.worker.natrobotcontroller.models.MatchSignResult;
+import com.worker.natrobotcontroller.models.TrafficDirection;
 import com.worker.natrobotcontroller.models.TrafficSign;
 import com.worker.natrobotcontroller.util.MatUtil;
 
@@ -286,11 +287,11 @@ public class CameraSightFragment {
     }
 
     private void preloadImage() {
-        signs.add(new TrafficSign("Turn right", activity, R.drawable.turnright, TrafficSign.RIGHT));
-        signs.add(new TrafficSign("Turn left", activity, R.drawable.turnleft, TrafficSign.LEFT));
-        signs.add(new TrafficSign("Turn back", activity, R.drawable.turnback, TrafficSign.BACK));
-        signs.add(new TrafficSign("Move straight", activity, R.drawable.movestraight, TrafficSign.STRAIGHT));
-        signs.add(new TrafficSign("Stop", activity, R.drawable.stopx, TrafficSign.STOP));
+        signs.add(new TrafficSign("Turn right", activity, R.drawable.turnright, TrafficDirection.RIGHT));
+        signs.add(new TrafficSign("Turn left", activity, R.drawable.turnleft, TrafficDirection.LEFT));
+        signs.add(new TrafficSign("Turn back", activity, R.drawable.turnback, TrafficDirection.BACK));
+        signs.add(new TrafficSign("Move straight", activity, R.drawable.movestraight, TrafficDirection.STRAIGHT));
+        signs.add(new TrafficSign("Stop", activity, R.drawable.stopx, TrafficDirection.STOP));
     }
 
     private double measureDifferenceBetween(Mat A, Mat B) {

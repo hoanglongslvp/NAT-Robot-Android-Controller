@@ -14,11 +14,6 @@ import static org.opencv.imgproc.Imgproc.COLOR_RGBA2GRAY;
 
 public final class TrafficSign {
 
-    public static final int STRAIGHT = 0;
-    public static final int BACK = 2;
-    public static final int LEFT = 1;
-    public static final int RIGHT = 3;
-    public static final int STOP = -1;
     public Mat img;
     public final int direction;
     public String msg;

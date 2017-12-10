@@ -15,6 +15,7 @@ import android.widget.TextView;
 import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar;
 import com.worker.natrobotcontroller.R.id;
 import com.worker.natrobotcontroller.activities.MainActivity;
+import com.worker.natrobotcontroller.models.TrafficDirection;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -112,7 +113,7 @@ public class JoystickFragment {
         new ReadingTask().execute();
     }
 
-    public void selectMode(String mode) {
+    private void selectMode(String mode) {
         switch (mode) {
             case "Game pad":
                 if (mode.equals("Game pad")) {
@@ -161,8 +162,8 @@ public class JoystickFragment {
             }
     }
 
-    public void trigger(int direction) {
-        if (direction == -1) {
+    void trigger(int direction) {
+        if (direction == TrafficDirection.STOP) {
             this.slimSendCommand("p10;");
         } else {
             int tmp = this.currentAngle + direction * 90;
@@ -181,12 +182,12 @@ public class JoystickFragment {
             } else if (tmp < 315) {
                 tmp = 270;
             }
-            this.slimSendCommand("_" + tmp + ";s250;");
+            this.slimSendCommand("_" + tmp + ";");
         }
 
     }
 
-    public SharedPreferences getPreferences() {
+    private SharedPreferences getPreferences() {
         if (preferences == null)
             preferences = PreferenceManager.getDefaultSharedPreferences(activity);
         return preferences;
@@ -234,8 +235,6 @@ public class JoystickFragment {
                                             break;
                                         case 'd':
                                             desiredAngle = readNumber(cmd);
-                                        case 'e':
-                                        default:
                                             break;
                                         case 'f':
                                             frontDistance = readNumber(cmd);
