@@ -48,10 +48,11 @@ public class CameraSightFragment {
     public static final int MIN_SIZE = 1;
     public static final int BAD_NUMBER = 100000000;
     public static final double INDICATOR_LENGHT = 10;
+    public static final double SCALE_THRESHOLD = 2;
     private View view;
     private boolean initedOpenCV;
     private boolean isDebug;
-    private double detectThreshold = 1.5D;
+    private double detectThreshold = 3.5D;
     private Scalar LIGHT_BLUE = new Scalar(25.0D, 118.0D, 210);
     private Scalar RED = new Scalar(255.0D, 64.0D, 129.0D);
     private List<Mat> matStack = new ArrayList<>();
@@ -211,14 +212,10 @@ public class CameraSightFragment {
 
             @Override
             public void afterTextChanged(Editable editable) {
-                try {
-                    detectThreshold = Float.parseFloat(editable.toString());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    ToastsKt.toast(activity, "Threshold value is malformed!");
-                }
+                parseThreshold(editable);
             }
         });
+        parseThreshold(thresholdED.getText());
         screenSizeSpinner = v.findViewById(id.screenSizeSpinner);
         screenSizeSpinner.setSelection(0, false);
         screenSizeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -236,6 +233,15 @@ public class CameraSightFragment {
         cameraView.enableView();
     }
 
+    private void parseThreshold(Editable editable) {
+        try {
+            detectThreshold = Float.parseFloat(editable.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            ToastsKt.toast(activity, "Threshold value is malformed!");
+        }
+    }
+
     private void setCameraSize(int size) {
         if (size != oldSize) {
             activity.log("Camera is changing size, please wait...");
@@ -249,9 +255,9 @@ public class CameraSightFragment {
 
     private boolean isPrettySquare(Size size) {
         double fixedWidth = size.width * cameraScaledRatio;
-        if (fixedWidth > size.height)
-            return fixedWidth / size.height < 1.2;
-        else return fixedWidth / size.height > 0.8;
+        boolean result =(fixedWidth/size.height<SCALE_THRESHOLD&&fixedWidth/size.height>1/SCALE_THRESHOLD);
+        Log.d("SWUARE","scale:"+cameraScaledRatio+" w:"+fixedWidth+" h:"+size.height+" r:"+result);
+        return result;
     }
 
     private void drawSignSizeIndicator(Mat rgba) {

@@ -67,9 +67,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginLeft="4dp"
-            android:text="1.5"
-            android:hint="Default is 1.5"
-            android:inputType="number" />
+            android:text="3"
+            android:hint="Default is 3"
+            android:inputType="text" />
     </LinearLayout>
 
     <FrameLayout
