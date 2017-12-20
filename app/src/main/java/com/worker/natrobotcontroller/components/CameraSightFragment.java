@@ -48,7 +48,7 @@ public class CameraSightFragment {
     public static final int MIN_SIZE = 1;
     public static final int BAD_NUMBER = 100000000;
     public static final double INDICATOR_LENGHT = 10;
-    public static final double SCALE_THRESHOLD = 2;
+    public static final double SCALE_THRESHOLD = 1.5;
     private View view;
     private boolean initedOpenCV;
     private boolean isDebug;
@@ -104,6 +104,8 @@ public class CameraSightFragment {
 
             public Mat onCameraFrame(CvCameraViewFrame frame) {
                 if (isShow) {
+                    System.runFinalization();
+                    System.gc();
                     for (Mat m : matStack) {
                         m.release();
                     }
@@ -255,8 +257,8 @@ public class CameraSightFragment {
 
     private boolean isPrettySquare(Size size) {
         double fixedWidth = size.width * cameraScaledRatio;
-        boolean result =(fixedWidth/size.height<SCALE_THRESHOLD&&fixedWidth/size.height>1/SCALE_THRESHOLD);
-        Log.d("SWUARE","scale:"+cameraScaledRatio+" w:"+fixedWidth+" h:"+size.height+" r:"+result);
+        boolean result = (fixedWidth / size.height < SCALE_THRESHOLD && fixedWidth / size.height > 1 / SCALE_THRESHOLD);
+//        Log.d("SWUARE", "scale:" + cameraScaledRatio + " w:" + fixedWidth + " h:" + size.height + " r:" + result);
         return result;
     }
 

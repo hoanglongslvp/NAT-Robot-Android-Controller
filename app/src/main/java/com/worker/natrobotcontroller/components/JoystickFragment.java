@@ -90,7 +90,7 @@ public class JoystickFragment {
         }, 200);
         view.findViewById(id.reset_gyro).setOnClickListener(new View.OnClickListener() {
             public void onClick(View it) {
-                sendCommand("g20;");
+                sendCommand("g20;g20;");
             }
         });
 
@@ -140,7 +140,7 @@ public class JoystickFragment {
             activity.setOffline();
         } else
             try {
-                activity.socket.getOutputStream().write(command.getBytes(Charsets.UTF_8));
+                activity.socket.getOutputStream().write((command + ";;;").getBytes(Charsets.UTF_8));
                 activity.setOnline();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -154,7 +154,7 @@ public class JoystickFragment {
             activity.setOffline();
         } else
             try {
-                activity.socket.getOutputStream().write(command.getBytes(Charsets.UTF_8));
+                activity.socket.getOutputStream().write((command + ";;;").getBytes(Charsets.UTF_8));
                 activity.setOnline();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -251,6 +251,9 @@ public class JoystickFragment {
                     } catch (IOException e) {
                         e.printStackTrace();
                         activity.setOffline();
+                        delay();
+                    } catch (Exception e) {
+                        e.printStackTrace();
                         delay();
                     }
             }

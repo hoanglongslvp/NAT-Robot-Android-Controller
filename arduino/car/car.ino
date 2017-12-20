@@ -1,36 +1,27 @@
 #include "Arduino.h"
 #include <LiquidCrystal_I2C.h>
-#include <IRremote.h>
-#include "IRKeyCode.h"
 #include <MPU6050.h>
-#include <time.h>
-#include <math.h>
 #include <SoftwareSerial.h>
 
-const int IR_RECV_PIN = 3;
 const int BATTERY_PIN = A1;
-const int enA = 10;
-const int in1 = 9;
-const int in2 = 8;
+const int EN_A = 10;
+const int IN_1 = 8;
+const int IN_2 = 9;
 
-const int enB = 5;
-const int in3 = 4;
-const int in4 = 11; //from 3
-
-int lTurn = 0;
-int rTurn = 0;
+const int EN_B = 5;
+const int IN_3 = 4;
+const int IN_4 = 11; //from 3
 
 const int FRONT_ECHO = 6;     // chân echo của HC-SR05
 const int FRONT_TRIGGER = 7;     // chân trig của HC-SR05
-const int BACK_TRIGGER = 13;     // chân trig của HC-SR05
-const int BACK_ECHO = 12;     // chân echo của HC-SR05
 
 int leftSpeed = 0;
 int rightSpeed = 0;
 
 int oldLeftSpeed = 0;
 int oldRightSpeed = 0;
-long pauseCounter = millis();
+long pauseTimer = millis();
+int pauseCounter = 0; //anti noise
 
 double currentAngle = 0.0; //0-360 degrees
 double desiredAngle = 0.0; //0-360 degrees
@@ -41,8 +32,6 @@ long microSecond = micros();
 bool isStopping = true;
 
 int maxSpeed = 200;
-const int STEP_SPEED = 10;
-const int MIN_SPEED = 0;
 const int ROTATING_LEFT = 134;
 const int ROTATING_RIGHT = 135;
 int rotatingMode = ROTATING_LEFT;
@@ -51,371 +40,299 @@ const int MIN_DISTANCE = 20;
 const int BLUETOOTH_RX = A2;
 const int BLUETOOTH_TX = A3;
 int count = 0;
+const int MIN_ANGLE = 15;
 
-LiquidCrystal_I2C lcd(0x3F, 16, 2);		//the LCD
-IRrecv irrecv(IR_RECV_PIN);				//the IR receiver
-decode_results results;					//IR decode's result
-MPU6050 mpu;							//gyroscope
+bool isPause = false;
+
+LiquidCrystal_I2C lcd(0x3F, 16, 2);    //the LCD
+MPU6050 gyroscope;              //gyroscope
 SoftwareSerial bluetooth(BLUETOOTH_RX, BLUETOOTH_TX);
 String reason = "nope";
+
+
+//get distance by cm from ultrasonic sensor
 int getDistance(int trigger, int echo) {
-	long duration, distanceCm;
-	digitalWrite(trigger, LOW);
-	delayMicroseconds(2);
-	digitalWrite(trigger, HIGH);
-	delayMicroseconds(5);
-	digitalWrite(trigger, LOW);
-	duration = pulseIn(echo, HIGH, 5000);
-	distanceCm = duration * 340 / 20 / 1000;
-	if (distanceCm == 0)
-		return 99;
-	return distanceCm;
+    long duration, distanceCm;
+    digitalWrite(trigger, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigger, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(trigger, LOW);
+    duration = pulseIn(echo, HIGH, 5000);
+    distanceCm = duration * 340 / 20 / 1000;
+    if (distanceCm == 0)
+        return 99;
+    return distanceCm;
 }
 
+//setup and init everything
 void setup() {
-	Serial.begin(9600);
-	irrecv.enableIRIn(); // Start the receiver
-	pinMode(enA, OUTPUT);
-	pinMode(in1, OUTPUT);
-	pinMode(in2, OUTPUT);
-	pinMode(IR_RECV_PIN, INPUT);
-	pinMode(enB, OUTPUT);
-	pinMode(in3, OUTPUT);
-	pinMode(in4, OUTPUT);
+    Serial.begin(9600);
+    pinMode(EN_A, OUTPUT);
+    pinMode(IN_1, OUTPUT);
+    pinMode(IN_2, OUTPUT);
+    pinMode(EN_B, OUTPUT);
+    pinMode(IN_3, OUTPUT);
+    pinMode(IN_4, OUTPUT);
 
-	pinMode(BLUETOOTH_RX, INPUT);
-	pinMode(BLUETOOTH_TX, OUTPUT);
-	bluetooth.begin(9600);
-	pinMode(BATTERY_PIN, INPUT);
-	pinMode(FRONT_TRIGGER, OUTPUT);   	// chân trig sẽ phát tín hiệu
-	pinMode(BACK_TRIGGER, OUTPUT);   	// chân trig sẽ phát tín hiệu
-	pinMode(FRONT_ECHO, INPUT);    		// chân echo sẽ nhận tín hiệu
-	pinMode(BACK_ECHO, INPUT);    		// chân echo sẽ nhận tín hiệu
+    pinMode(BLUETOOTH_RX, INPUT);
+    pinMode(BLUETOOTH_TX, OUTPUT);
+    bluetooth.begin(9600);
+    pinMode(BATTERY_PIN, INPUT);
+    pinMode(FRONT_TRIGGER, OUTPUT);     // chân trig sẽ phát tín hiệu
+    pinMode(FRONT_ECHO, INPUT);       // chân echo sẽ nhận tín hiệu
 
-	while (!mpu.begin(MPU6050_SCALE_2000DPS, MPU6050_RANGE_2G)) {
-		Serial.println("Not found MPU!!");
-		delay(500);
-	}
 
-	lcd.begin();
-	lcd.backlight();
-	lcd.setCursor(0, 0);
-	lcd.print("    NAT TEAM    ");
-	lcd.setCursor(0, 1);
-	lcd.print("AUTOCAR NAT TEAM");
-	mpu.calibrateGyro(10);
-	delay(500);
-	lcd.clear();
+
+    lcd.begin();
+    lcd.backlight();
+    lcd.setCursor(0, 0);
+    lcd.print("    NAT TEAM    ");
+    lcd.setCursor(0, 1);
+    lcd.print("AUTOCAR NAT TEAM");
+    delay(500);
+    while (!gyroscope.begin(MPU6050_SCALE_2000DPS, MPU6050_RANGE_2G)) {
+        lcd.print("Not found MPU!!");
+        delay(500);
+    }
+    gyroscope.calibrateGyro(10);
+    lcd.clear();
 }
 
 void dispDistance(int row) {
-	lcd.setCursor(0, row);
-	lcd.print("F:");
-	lcd.print(getDistance(FRONT_TRIGGER, FRONT_ECHO));
-	lcd.print(" B:");
-	lcd.print(getDistance(BACK_TRIGGER, BACK_ECHO));
-	if (millis() < pauseCounter) {
-		lcd.print(" P:");
-		lcd.print(pauseCounter - millis());
-	}
+    lcd.setCursor(0, row);
+    lcd.print("F:");
+    lcd.print(getDistance(FRONT_TRIGGER, FRONT_ECHO));
+    if (millis() < pauseTimer) {
+        lcd.print(" P:");
+        lcd.print(pauseTimer - millis());
+    }
 }
 
 const float MAX_BATTERY = 450;
 const float MIN_BATTERY = 200;
 
-void dispBattery(int row) { //not working
-//	Tinh toan Voltage
-	int sensorValue = analogRead(BATTERY_PIN); //read the A0 pin value
-	float voltage = sensorValue * 5.0 * 5.24 / 1023.0;
-	//Serial.println(voltage);
-	lcd.setCursor(0, row);
-	lcd.print("Bat: ");
-	lcd.print(voltage);
-	lcd.print("V ");
-	float battery; // phan tram pin
-	battery = (sensorValue - MIN_BATTERY) * 100 / (MAX_BATTERY - MIN_BATTERY);
-	lcd.print((int) battery);
-	lcd.print("%");
+void dispBattery(int row) {
+    int sensorValue = analogRead(BATTERY_PIN); //read the A0 pin value
+    float voltage = sensorValue * 5.0 * 5.24 / 1023.0;
+    lcd.setCursor(0, row);
+    lcd.print("Bat: ");
+    lcd.print(voltage);
+    lcd.print("V ");
+    float battery; // phan tram pin
+    battery = (sensorValue - MIN_BATTERY) * 100 / (MAX_BATTERY - MIN_BATTERY);
+    lcd.print((int) battery);
+    lcd.print("%          ");
 }
 
 void dispSpeed(int row) {
-	lcd.setCursor(0, row);
-	if (isStopping)
-		lcd.print("STOP " + reason);
-	else {
-		lcd.print("L:");
-		lcd.print(leftSpeed);
-		lcd.print(" R:");
-		lcd.print(rightSpeed);
-	}
-	lcd.print(" M:");
-	lcd.print(maxSpeed);
-	lcd.print("      ");
+    lcd.setCursor(0, row);
+    if (isStopping)
+        lcd.print("STOP " + reason);
+    else {
+        lcd.print("L:");
+        lcd.print(leftSpeed);
+        lcd.print(" R:");
+        lcd.print(rightSpeed);
+    }
+    lcd.print(" S:");
+    lcd.print(maxSpeed);
+    lcd.print("      ");
 }
 
 void dispAngle(int row) {
-	lcd.setCursor(0, row);
-	lcd.print("C:");
-	lcd.print((int) currentAngle);
-	lcd.print(" R:");
-	lcd.print((int) remainingAngle);
-	lcd.print(" M:");
-	lcd.print(maxSpeed);
-	lcd.print("   ");
+    lcd.setCursor(0, row);
+    if (isPause) {
+        lcd.print("Pausing ");
+        lcd.print((pauseTimer - millis()) / 1000);
+        lcd.print(" ");
+    } else if (isStopping) {
+        lcd.print(" Stopping");
+    } else {
+        lcd.print("C:");
+        lcd.print((int) currentAngle);
+        lcd.print(" D:");
+        lcd.print((int) desiredAngle);
+    }
+    lcd.print(" S:");
+    lcd.print(maxSpeed);
+    lcd.print("              ");
 }
 
 void setRightSpeed(int speed) {
-	rightSpeed = speed;
-	if (speed < 0) {
-		analogWrite(enB, -speed);
-		digitalWrite(in3, LOW);
-		digitalWrite(in4, HIGH);
-	} else {
-		analogWrite(enB, speed);
-		digitalWrite(in3, HIGH);
-		digitalWrite(in4, LOW);
-	}
+    rightSpeed = speed;
+    if (speed < 0) {
+        analogWrite(EN_B, -speed);
+        digitalWrite(IN_3, HIGH);
+        digitalWrite(IN_4, LOW);
+    } else {
+        analogWrite(EN_B, speed);
+        digitalWrite(IN_3, LOW);
+        digitalWrite(IN_4, HIGH);
+    }
 }
 
 void setLeftSpeed(int speed) {
-	leftSpeed = speed;
-	if (speed < 0) {
-		analogWrite(enA, -speed);
-		digitalWrite(in1, LOW);
-		digitalWrite(in2, HIGH);
-	} else {
-		analogWrite(enA, speed);
-		digitalWrite(in1, HIGH);
-		digitalWrite(in2, LOW);
-	}
+    leftSpeed = speed;
+    if (speed < 0) {
+        analogWrite(EN_A, -speed);
+        digitalWrite(IN_1, HIGH);
+        digitalWrite(IN_2, LOW);
+    } else {
+        analogWrite(EN_A, speed);
+        digitalWrite(IN_1, LOW);
+        digitalWrite(IN_2, HIGH);
+    }
 }
 
 void stop(String _reason) {
-	setRightSpeed(0);
-	setLeftSpeed(0);
-	isStopping = true;
-	reason = _reason;
-	Serial.println("Stop by " + reason);
-	delay(1000);
+    setRightSpeed(0);
+    setLeftSpeed(0);
+    isStopping = true;
+    reason = _reason;
+    Serial.println("Stop by " + reason);
+    delay(1000);
 }
 
 void recalibrate() {
-	currentAngle = 0;
-	desiredAngle = 0;
-	mpu.calibrateGyro(10);
-	stop("recalibrate");
+    currentAngle = 0;
+    desiredAngle = 0;
+    gyroscope.calibrateGyro(1);
+    stop("recalibrate");
 }
 
 void processBluetooth() {
-	while (bluetooth.available() > 0) {
-		String cmd = bluetooth.readStringUntil(';');
-		int speed = cmd.substring(1, cmd.length()).toInt();
-		switch (cmd[0]) {
-		case 'l':
-			setLeftSpeed(speed);
-			isStopping = false;
-			break;
-		case 'r':
-			setRightSpeed(speed);
-			isStopping = false;
-			break;
-		case 's':
-			maxSpeed = speed;
-			break;
-		case '_': //rotate
-			desiredAngle = speed;
-			isStopping = false;
-			break;
-		case 'p': //pause
-			stop("blue pause");
-			return;
-			break;
-		case 'g': //gyro calibrate
-			recalibrate();
-			break;
-		default:
-			break;
-		}
-	}
-	if (count == 9) {
-//		Serial.println(
-//				(String) "f" + getDistance(FRONT_TRIGGER, FRONT_ECHO) + ";b"
-//						+ getDistance(BACK_TRIGGER, BACK_ECHO) + ";c"
-//						+ (int) currentAngle + ";d" + (int) desiredAngle + ";");
+    while (bluetooth.available() > 0) {
+        String cmd = bluetooth.readStringUntil(';');
+        int value = cmd.substring(1, cmd.length()).toInt();
+        switch (cmd[0]) {
+            case 'l':
+                setLeftSpeed(value);
+                isStopping = false;
+                break;
+            case 'r':
+                setRightSpeed(value);
+                isStopping = false;
+                break;
+            case 's':
+                maxSpeed = value;
+                break;
+            case '_': //rotate
+                desiredAngle = value;
+                isStopping = false;
+                break;
+            case 'p': //pause
+                stop("blue pause");
+                return;
+            case 'g': //gyro calibrate
+                recalibrate();
+                break;
+            default:
+                break;
+        }
+    }
+    bluetooth.println(
+            (String) "f" + getDistance(FRONT_TRIGGER, FRONT_ECHO) + ";;;c"
+            + (int) currentAngle + ";;;d" + (int) desiredAngle + ";;;");
 
-		bluetooth.println(
-				(String) "f" + getDistance(FRONT_TRIGGER, FRONT_ECHO) + ";b"
-						+ getDistance(BACK_TRIGGER, BACK_ECHO) + ";c"
-						+ (int) currentAngle + ";d" + (int) desiredAngle + ";");
-	}
-}
-
-void processIR() {
-	if (irrecv.decode(&results)) {
-		switch (results.value) {
-		case KEY_2:
-			desiredAngle = 0;
-			isStopping = false;
-			break;
-		case KEY_8:
-			desiredAngle = 180;
-			isStopping = false;
-			break;
-		case KEY_4:
-			desiredAngle = 90;
-			isStopping = false;
-			break;
-		case KEY_6:
-			desiredAngle = -90;
-			isStopping = false;
-			break;
-		case KEY_3:
-			desiredAngle = -45;
-			isStopping = false;
-			break;
-		case KEY_1:
-			desiredAngle = 45;
-			isStopping = false;
-			break;
-		case KEY_7:
-			desiredAngle = 135;
-			isStopping = false;
-			break;
-		case KEY_9:
-			desiredAngle = -135;
-			isStopping = false;
-			break;
-		case KEY_PLUS:
-			if (maxSpeed < 256 - STEP_SPEED)
-				maxSpeed += 10;
-			break;
-		case KEY_MINUS:
-			if (maxSpeed > MIN_SPEED + STEP_SPEED)
-				maxSpeed -= 10;
-			break;
-		case KEY_5:
-			stop("key 5");
-			break;
-		case KEY_EQ:
-			recalibrate();
-			break;
-
-		default:
-			break;
-		}
-		irrecv.resume(); // Receive the next value
-	}
 }
 
 void processGyro() {
-	Vector normGyro = mpu.readNormalizeGyro();
-	microSecond = micros();
-	if (lastTime == 0) {
-		lastTime = microSecond;
-		return;
-	} else {
-		currentAngle += 1.0 * normGyro.XAxis * (microSecond - lastTime)
-				/ 1000000;
-		lastTime = microSecond;
-	}
+    Vector normGyro = gyroscope.readNormalizeGyro();
+    microSecond = micros();
+    if (lastTime == 0) {
+        lastTime = microSecond;
+        return;
+    } else {
+        currentAngle += 1.0 * normGyro.XAxis * (microSecond - lastTime)
+                        / 1000000;
+        lastTime = microSecond;
+    }
 }
 
-const int MIN_ANGLE = 5;
+
 void processSpeed() {
-	if (isStopping) {
-		return;
-	}
-	remainingAngle = desiredAngle - currentAngle;
-	while (remainingAngle < 0)
-		remainingAngle += 360;
-	while (remainingAngle > 360)
-		remainingAngle -= 360;
+    if (isStopping || isPause) {
+        return;
+    }
+    remainingAngle = desiredAngle - currentAngle;
+    while (remainingAngle < 0)
+        remainingAngle += 360;
+    while (remainingAngle > 360)
+        remainingAngle -= 360;
 
-	if (remainingAngle < MIN_ANGLE) {
-		setRightSpeed(maxSpeed);
-		setLeftSpeed(maxSpeed * 0.7);
-	} else if (remainingAngle < 180) { //rotate left
-		rotatingMode = ROTATING_LEFT;
-		setRightSpeed(maxSpeed);
-		setLeftSpeed(-maxSpeed);
-	} else if (remainingAngle == 180) {
-		if (rotatingMode == ROTATING_LEFT) {
-			setRightSpeed(maxSpeed);
-			setLeftSpeed(-maxSpeed);
-		} else {
-			setRightSpeed(-maxSpeed);
-			setLeftSpeed(maxSpeed);
-		}
-	} else if (remainingAngle < (360 - MIN_ANGLE)) {
-		rotatingMode = ROTATING_RIGHT;
-		remainingAngle = 360 - remainingAngle;
-		setLeftSpeed(maxSpeed);
-		setRightSpeed(-maxSpeed);
-	} else {
-		setLeftSpeed(maxSpeed);
-		setRightSpeed(maxSpeed * 0.7);
-	}
+    if (remainingAngle < MIN_ANGLE) {
+        setRightSpeed(maxSpeed);
+        setLeftSpeed(maxSpeed * 0.7);
+    } else if (remainingAngle < 180) { //rotate left
+        rotatingMode = ROTATING_LEFT;
+        setRightSpeed(maxSpeed);
+        setLeftSpeed(-maxSpeed);
+    } else if (remainingAngle == 180) {
+        if (rotatingMode == ROTATING_LEFT) {
+            setRightSpeed(maxSpeed);
+            setLeftSpeed(-maxSpeed);
+        } else {
+            setRightSpeed(-maxSpeed);
+            setLeftSpeed(maxSpeed);
+        }
+    } else if (remainingAngle < (360 - MIN_ANGLE)) {
+        rotatingMode = ROTATING_RIGHT;
+//        remainingAngle = 360 - remainingAngle;
+        setLeftSpeed(maxSpeed);
+        setRightSpeed(-maxSpeed);
+    } else {
+        setLeftSpeed(maxSpeed);
+        setRightSpeed(maxSpeed * 0.7);
+    }
 }
+
 
 void pause() {
-	oldLeftSpeed = leftSpeed;
-	oldRightSpeed = rightSpeed;
-	pauseCounter = millis() + 5000;
-	stop("pause");
+    isPause = true;
+    oldLeftSpeed = leftSpeed;
+    oldRightSpeed = rightSpeed;
+    pauseTimer = millis() + 5000;
+    setLeftSpeed(0);
+    setRightSpeed(0);
 }
+
 void unPause() {
-	setLeftSpeed(oldLeftSpeed);
-	setRightSpeed(oldRightSpeed);
-	pauseCounter = 0;
-	isStopping = false;
+    isPause = false;
+    setLeftSpeed(oldLeftSpeed);
+    setRightSpeed(oldRightSpeed);
+    pauseTimer = 0;
+    pauseCounter = 0;
 }
+
 
 void processSonic() {
-	if ((getDistance(FRONT_TRIGGER, FRONT_ECHO) <= MIN_DISTANCE))
-		pause();
-	else if (pauseCounter > 0) {
-		unPause();
-	}
-}
-
-void profile(void* func, String name) {
-	long start = micros();
-	((void (*)()) func)();
-	long delta = micros() - start;
-	Serial.println("Function " + name + " runs in " + delta + " micros");
+    int dis = getDistance(FRONT_TRIGGER, FRONT_ECHO);
+    if ((dis <= MIN_DISTANCE)) {
+        pauseCounter++;
+        if (pauseCounter > 5)
+            pause();
+    } else if (pauseTimer > 0) {
+        unPause();
+    }
 }
 
 void processPause() {
-	if (millis() > pauseCounter)
-		processSonic();
+    if (millis() > pauseTimer)
+        processSonic();
 }
 
-void main_loop() {
-	if (count++ > 10) {
-
-//		dispSpeed(0);
-		dispAngle(1);
-		dispBattery(0);
-//		dispDistance(1);
-		processPause();
-		count = 0;
-	}
-	processBluetooth(); //those functions are very slow that can lower our FPS
-	processIR();
-	processGyro();
-	processSpeed();
-
-}
-
-long fps_timer = micros();
-int fps_counter = 0;
 void loop() {
-	main_loop();
-	if (micros() - fps_timer > 1000000) {
-		fps_timer = micros();
-		Serial.println((String) "FPS: " + fps_counter);
-		fps_counter = 0;
-	}
-	fps_counter++;
+    if (count++ > 10) {
+        //those functions are very slow that can lower our FPS
+        processBluetooth();
+        dispAngle(1);
+        dispBattery(0);
+        count = 0;
+    }
+    processPause();
+    processGyro();
+    processSpeed();
 }
+
 

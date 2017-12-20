@@ -93,7 +93,6 @@ public final class MainActivity extends AppCompatActivity {
                     log("Started discovering");
                     break;
                 case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
-                    log("Discovery finished");
                     bluetooth.cancelDiscovery();
             }
         }
@@ -128,8 +127,6 @@ public final class MainActivity extends AppCompatActivity {
         navigationView = findViewById(id.navigation);
         navigationView.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
         navigationView.setSelectedItemId(R.id.navigation_joystick);
-//        camera.hide();
-//        controller.show();
         askForPermission();
     }
 
