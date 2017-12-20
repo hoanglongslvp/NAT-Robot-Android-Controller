@@ -182,7 +182,7 @@ public class JoystickFragment {
             } else if (tmp < 315) {
                 tmp = 270;
             }
-            this.slimSendCommand("_" + tmp + ";");
+            this.slimSendCommand("_" + tmp + ";" + "s" + speed + ";");
         }
 
     }
